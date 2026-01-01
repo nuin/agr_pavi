@@ -9,6 +9,7 @@ import { InputPayloadDispatchAction } from '../JobSubmitForm/types';
 interface AlignmentEntryListProps {
     readonly agrjBrowseDataRelease: string
     readonly dispatchInputPayloadPart: React.Dispatch<InputPayloadDispatchAction>
+    readonly initialGeneIds?: string[]
 }
 export const AlignmentEntryList: FunctionComponent<AlignmentEntryListProps> = (props: AlignmentEntryListProps) => {
 
@@ -19,12 +20,13 @@ export const AlignmentEntryList: FunctionComponent<AlignmentEntryListProps> = (p
         agrjBrowseDataRelease: props.agrjBrowseDataRelease,
         dispatchInputPayloadPart: props.dispatchInputPayloadPart
     }
-    const initListItem = (index: number) => {
-        console.log(`Initiating list item for index ${index}`)
+    const initListItem = (index: number, initialGeneId?: string) => {
+        console.log(`Initiating list item for index ${index}${initialGeneId ? ` with initialGeneId: ${initialGeneId}` : ''}`)
         return(
             {props: {
                 ...alignmentEntryBaseProps,
-                index: index
+                index: index,
+                initialGeneId: initialGeneId
             }}
         ) as AlignmentEntryListItem
     }
@@ -84,19 +86,52 @@ export const AlignmentEntryList: FunctionComponent<AlignmentEntryListProps> = (p
         return cleanupAlignmentEntries
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Handle loading initial gene IDs (e.g., from example data)
+    useEffect(() => {
+        if (props.initialGeneIds && props.initialGeneIds.length > 0) {
+            console.log(`Loading ${props.initialGeneIds.length} initial gene IDs:`, props.initialGeneIds)
+            setAlignmentEntries(() => {
+                const newState = new Map<number, AlignmentEntryListItem>()
+                props.initialGeneIds!.forEach((geneId, index) => {
+                    newState.set(index, initListItem(index, geneId))
+                })
+                return newState
+            })
+        }
+    }, [props.initialGeneIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
     return (
-        <table>
-            <tbody>
-                {Array.from(alignmentEntries.values()).map((listEntry) => (
-                    <tr key={listEntry.props.index}>
-                        <td><Button text id="remove-record" icon="pi pi-trash" onClick={() => removeAlignmentEntry(listEntry.props.index)} /></td>
-                        <td>< AlignmentEntry {...listEntry.props} /></td>
-                    </tr>))
-                }
-                <tr><td>
-                    <Button text id="add-record" icon="pi pi-plus" onClick={() => addAlignmentEntry()} />
-                </td></tr>
-            </tbody>
-        </table>
+        <div className="agr-alignment-list">
+            {Array.from(alignmentEntries.values()).map((listEntry) => (
+                <div key={listEntry.props.index} className="agr-alignment-entry">
+                    {alignmentEntries.size > 1 && (
+                        <div className="agr-alignment-entry-controls">
+                            <Button
+                                text
+                                severity="danger"
+                                id="remove-record"
+                                icon="pi pi-trash"
+                                onClick={() => removeAlignmentEntry(listEntry.props.index)}
+                                tooltip="Remove this entry"
+                                tooltipOptions={{ position: 'top' }}
+                            />
+                        </div>
+                    )}
+                    <div className="agr-alignment-entry-fields">
+                        <AlignmentEntry {...listEntry.props} />
+                    </div>
+                </div>
+            ))}
+            <div className="agr-alignment-add">
+                <Button
+                    text
+                    id="add-record"
+                    icon="pi pi-plus"
+                    label="Add Another Gene"
+                    onClick={() => addAlignmentEntry()}
+                    className="p-button-outlined"
+                />
+            </div>
+        </div>
     )
 }

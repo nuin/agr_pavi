@@ -8,6 +8,9 @@ import { submitNewPipelineJob } from './serverActions';
 
 import { AlignmentEntryList } from '../AlignmentEntryList/AlignmentEntryList';
 import { AlignmentEntryStatus } from '../AlignmentEntry/types';
+import { ExampleDataLoader, ExampleData } from '../ExampleDataLoader/ExampleDataLoader';
+import { FormIntroduction } from '../FormIntroduction';
+import { ValidationSummary } from '../ValidationMessage';
 
 import { JobType, JobSumbissionPayloadRecord, InputPayloadDispatchAction, InputPayloadPart, InputPayloadPartMap } from './types';
 
@@ -83,7 +86,9 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     function generate_complete_payload() {
         let payload = [] as JobSumbissionPayloadRecord[]
 
-        inputPayloadParts.forEach((part) => {
+        console.log('generate_complete_payload: inputPayloadParts size =', inputPayloadParts.size)
+        inputPayloadParts.forEach((part, index) => {
+            console.log(`generate_complete_payload: part[${index}] status=${part.status}, hasPayload=${!!part.payloadPart}`)
             if(part.payloadPart){
                 payload = payload.concat(part.payloadPart)
             }
@@ -99,6 +104,8 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     }
 
     const submitDisabled = () => {
+        const statuses = [...inputPayloadParts.values()].map(r => r.status)
+        console.log('submitDisabled: entry statuses =', statuses)
         const non_ready = [...inputPayloadParts.values()].some(
             (record) => record.status !== AlignmentEntryStatus.READY
         )
@@ -112,6 +119,16 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     }
     const [job, setJob] = useState(initJob)
     const [displayMsg, setDisplayMsg] = useState('')
+    const [validationErrors, setValidationErrors] = useState<string[]>([])
+    const [initialGeneIds, setInitialGeneIds] = useState<string[]>()
+
+    const handleLoadExample = useCallback((example: ExampleData) => {
+        console.log('Loading example:', example.name)
+        const geneIds = example.genes.map(gene => gene.geneId)
+        console.log('Gene IDs to load:', geneIds)
+        setInitialGeneIds(geneIds)
+        setValidationErrors([])
+    }, [])
 
     const jobDisplayMsg = useCallback( () => {
         if (job['status'] === 'expected' || job['status'] === 'submitting') {
@@ -134,6 +151,7 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
 
     const handleSubmit = async() => {
         console.log('Generating payload:')
+        setValidationErrors([])
 
         setJob({
             uuid: undefined,
@@ -152,6 +170,7 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
         }
         else{
             console.warn('No payload to submit.')
+            setValidationErrors(['At least two sequences are required for alignment.'])
 
             setJob({
                 uuid: undefined,
@@ -186,14 +205,30 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     );
 
     return (
-        <div>
-            <AlignmentEntryList agrjBrowseDataRelease={props.agrjBrowseDataRelease}
-                                dispatchInputPayloadPart={dispatchInputPayloadPart} />
-            <Button label='Submit' onClick={handleSubmit} icon="pi pi-check"
-                    loading={job['status'] === 'submitting'}
-                    disabled={submitDisabled()}
-                    /><br />
-            <div id="display-message">{displayMsg}</div>
+        <div className="agr-page-section">
+            <FormIntroduction />
+
+            <ValidationSummary errors={validationErrors} />
+
+            <div className="agr-card">
+                <div className="agr-card-header">
+                    <h2>Alignment Entries</h2>
+                    <ExampleDataLoader onLoadExample={handleLoadExample} />
+                </div>
+                <div className="agr-card-body">
+                    <AlignmentEntryList agrjBrowseDataRelease={props.agrjBrowseDataRelease}
+                                        dispatchInputPayloadPart={dispatchInputPayloadPart}
+                                        initialGeneIds={initialGeneIds} />
+                </div>
+                <div className="agr-card-footer">
+                    <Button label='Submit Job' onClick={handleSubmit} icon="pi pi-check"
+                            loading={job['status'] === 'submitting'}
+                            disabled={submitDisabled()}
+                            className="p-button-lg"
+                            />
+                    {displayMsg && <div className="agr-message agr-message-error">{displayMsg}</div>}
+                </div>
+            </div>
         </div>
     );
 }

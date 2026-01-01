@@ -1,3 +1,9 @@
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withBundleAnalyzer = bundleAnalyzer({
+    enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     eslint: {
@@ -11,7 +17,7 @@ const nextConfig = {
             'https://raw.githubusercontent.com/alliance-genome/agr_ui/test/',
             'https://raw.githubusercontent.com/alliance-genome/agr_ui/stage/'
         ]
-    }
+    },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);
