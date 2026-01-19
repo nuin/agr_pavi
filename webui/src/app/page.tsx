@@ -57,7 +57,7 @@ export default function HomePage() {
                         </div>
                         <h3>Cross-Species Comparison</h3>
                         <p>
-                            Compare protein sequences across 7+ model organisms from
+                            Compare protein sequences across 8+ model organisms from
                             the Alliance of Genome Resources.
                         </p>
                     </div>
@@ -127,6 +127,7 @@ export default function HomePage() {
                         { name: 'Mouse', species: 'Mus musculus' },
                         { name: 'Rat', species: 'Rattus norvegicus' },
                         { name: 'Zebrafish', species: 'Danio rerio' },
+                        { name: 'Frog', species: 'Xenopus tropicalis' },
                         { name: 'Fruit Fly', species: 'Drosophila melanogaster' },
                         { name: 'Nematode', species: 'C. elegans' },
                         { name: 'Yeast', species: 'S. cerevisiae' },
