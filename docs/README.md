@@ -4,70 +4,117 @@ This directory contains documentation for the PAVI (Proteins Annotations and Var
 
 ## Documentation Index
 
+### Quick Start
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [CLAUDE.md](../CLAUDE.md) | All | Main project guidelines and development instructions |
+| [Quick Reference](quick-reference.md) | All | Common commands and quick start guide |
+
+### Reference Documentation
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [API Reference](api-reference.md) | Dev | Complete REST API endpoint documentation |
+| [Configuration Reference](configuration-reference.md) | Dev/Ops | All environment variables and configuration options |
+| [Database Schemas](database-schemas.md) | Dev | DynamoDB, SQLite, and S3 storage schemas |
+| [Data Flow Diagrams](data-flows.md) | Dev | Visual diagrams of data flow through the system |
+
+### Architecture & Design
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [Architecture Diagram](architecture-diagram.md) | All | High-level system architecture |
+| [Step Functions Design](step-functions-design.md) | Dev/Ops | AWS Step Functions pipeline architecture |
+| [seq-retrieval Architecture](seq-retrieval-architecture.md) | Dev | Sequence retrieval component deep dive |
+| [Nightingale Guide](nightingale-guide.md) | Dev | EMBL-EBI Nightingale component integration |
+
 ### Deployment Guides
 
-| Document | Description |
-|----------|-------------|
-| [Local EC2 Deployment](local-ec2-deployment.md) | Complete guide for deploying PAVI on a single EC2 instance without AWS infrastructure |
-| [Step Functions Design](step-functions-design.md) | AWS Step Functions architecture for production deployment |
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [Local EC2 Deployment](local-ec2-deployment.md) | Ops | Deploy PAVI on a single EC2 instance |
+| [Deployment Guide](deployment-guide.md) | Ops | General deployment instructions |
+| [Step Functions Deployment Runbook](step-functions-deployment-runbook.md) | Ops | AWS Step Functions deployment guide |
+| [AWS Deployment Infrastructure](aws-deployment-infrastructure.md) | Ops | AWS infrastructure overview |
+| [WebUI Deployment Debugging](webui-deployment-debugging-guide.md) | Ops | Troubleshooting WebUI deployments |
 
-### Implementation Details
+### Development Guides
 
-| Document | Description |
-|----------|-------------|
-| [Local Pipeline Implementation](local-pipeline-implementation.md) | Technical details of the local pipeline code changes |
-| [Clustal Omega Build](clustal-omega-build.md) | Building Clustal Omega from source on Amazon Linux 2023 |
-| [Python Environment Setup](python-environment-setup.md) | Setting up Python with uv, ruff, and mypy |
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [Testing Guide](testing-guide.md) | Dev | How to run and write tests |
+| [Local Pipeline Implementation](local-pipeline-implementation.md) | Dev | Local pipeline code details |
+| [Clustal Omega Build](clustal-omega-build.md) | Dev/Ops | Building Clustal Omega from source |
+| [Python Environment Setup](python-environment-setup.md) | Dev | Python setup with uv, ruff, mypy |
 
-### Project Overview
+### Operations & Troubleshooting
 
-| Document | Description |
-|----------|-------------|
-| [CLAUDE.md](../CLAUDE.md) | Main project guidelines and development instructions |
-| [WebUI README](../webui/README.md) | Frontend documentation |
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [Troubleshooting](troubleshooting.md) | All | Common issues and solutions |
+| [Security Guide](security.md) | Ops | Security practices and considerations |
+
+### Planning & Roadmaps
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [PRD](PRD.md) | All | Product Requirements Document |
+| [PRD - Technology Stack Overhaul](PRD-PAVI-Technology-Stack-Overhaul.md) | All | Technology modernization PRD |
+| [PRD - Public Launch](prd-pavi-public-launch-unified.md) | All | Public launch requirements |
+| [Technical Roadmap](TECHNICAL-ROADMAP.md) | All | Technical development roadmap |
+| [Implementation Plan (3 Month)](IMPLEMENTATION-PLAN-3-MONTH.md) | All | 3-month implementation timeline |
+| [UX Specifications](UX-SPECIFICATIONS.md) | All | User experience specifications |
+| [UX Prioritized Roadmap](ux-prioritized-roadmap.md) | All | UX improvement priorities |
+| [UX Roadmap Action Plan](ux-roadmap-action-plan.md) | All | UX implementation plan |
+| [WebUI 8-Week UX Plan](pavi-webui-8week-ux-improvement-plan.md) | All | 8-week WebUI improvement plan |
+| [WebUI Improvement Summary](pavi-webui-improvement-plan-summary.md) | All | WebUI improvements overview |
+
+### Backlog & Progress
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [TODO](TODO.md) | Dev | Current task list |
+| [Unified Backlog](pavi-unified-backlog.md) | All | Complete project backlog |
+| [Backlog Review Summary](backlog-review-summary.md) | All | Backlog review notes |
+| [Week 1 Completion Summary](week1-completion-summary.md) | All | Week 1 progress |
+| [Week 2 Quick Start](week2-quick-start.md) | All | Week 2 quick start |
+| [Week 8 Development Plan](week8-development-plan.md) | All | Week 8 development plan |
+
+### Reference Materials
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [Scientific Utility Assessment](pavi-scientific-utility-assessment.md) | All | Scientific value assessment |
+| [Variant WG Reference](variant-wg-reference.md) | Dev | Variant working group reference |
+| [Benchmark Results](benchmark-results-baseline.md) | Dev/Ops | Performance benchmarks |
+| [Local EC2 Migration Plan](local-ec2-migration-plan.md) | Ops | Migration planning document |
+
+---
 
 ## Quick Start
 
-### Local EC2 Deployment
+### For Developers
 
-1. **Install system dependencies:**
-   ```bash
-   sudo yum install -y gcc gcc-c++ make cmake autoconf automake libtool git
-   ```
+1. Read [CLAUDE.md](../CLAUDE.md) for project conventions
+2. Follow [Python Environment Setup](python-environment-setup.md) or WebUI setup
+3. Review [API Reference](api-reference.md) for endpoint details
+4. Check [Testing Guide](testing-guide.md) before submitting PRs
 
-2. **Build and install Clustal Omega:**
-   ```bash
-   # See clustal-omega-build.md for detailed instructions
-   cd /tmp
-   git clone https://github.com/jonathanmarvens/argtable2.git
-   # ... build argtable2 ...
-   git clone https://github.com/GSLBiotech/clustal-omega.git
-   # ... build clustalo ...
-   ```
+### For Operations
 
-3. **Set up Python environment:**
-   ```bash
-   cd /home/ec2-user/agr_pavi/api
-   uv venv --python 3.12 .venv
-   uv pip install -r requirements.txt ruff mypy
-   ```
+1. Review [Configuration Reference](configuration-reference.md)
+2. Follow [Local EC2 Deployment](local-ec2-deployment.md) or [AWS Deployment](aws-deployment-infrastructure.md)
+3. Keep [Troubleshooting](troubleshooting.md) handy
+4. Review [Security Guide](security.md) for best practices
 
-4. **Create data directories:**
-   ```bash
-   sudo mkdir -p /var/lib/pavi/{jobs,results,work}
-   sudo chown -R ec2-user:ec2-user /var/lib/pavi
-   ```
+### For Understanding the System
 
-5. **Start the API:**
-   ```bash
-   cd /home/ec2-user/agr_pavi/api/src
-   USE_LOCAL_PIPELINE=true ../.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
+1. Start with [Architecture Diagram](architecture-diagram.md)
+2. Review [Data Flow Diagrams](data-flows.md)
+3. Explore [Step Functions Design](step-functions-design.md)
 
-6. **Verify:**
-   ```bash
-   curl http://localhost:8000/api/health
-   ```
+---
 
 ## Architecture Overview
 
@@ -97,19 +144,7 @@ WebUI → API (uvicorn) → LocalPipelineRunner → clustalo → Local FS
 | Compute | AWS Batch | Direct Python execution |
 | Alignment | Containerized clustalo | Local clustalo binary |
 
-## Configuration
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_LOCAL_PIPELINE` | `false` | Enable local pipeline mode |
-| `PAVI_LOCAL_JOBS_PATH` | `/var/lib/pavi/jobs` | SQLite database directory |
-| `PAVI_LOCAL_RESULTS_PATH` | `/var/lib/pavi/results` | Final results directory |
-| `PAVI_LOCAL_WORK_PATH` | `/var/lib/pavi/work` | Work files directory |
-| `PAVI_LOCAL_MAX_WORKERS` | `4` | Parallel sequence retrievals |
-
-## API Endpoints
+## API Endpoints Summary
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -119,69 +154,18 @@ WebUI → API (uvicorn) → LocalPipelineRunner → clustalo → Local FS
 | `/api/pipeline-job/{uuid}` | GET | Get job status |
 | `/api/pipeline-job/{uuid}/result/alignment` | GET | Get alignment result |
 | `/api/pipeline-job/{uuid}/result/seq-info` | GET | Get sequence info |
+| `/api/pipeline-job/{uuid}/logs` | GET | Get job logs |
 
-## File Structure
-
-```
-/home/ec2-user/agr_pavi/
-├── api/
-│   └── src/
-│       ├── config.py          # Configuration
-│       ├── main.py            # FastAPI app
-│       ├── job_service.py     # Job management
-│       ├── local_job_store.py # SQLite storage
-│       └── local_pipeline.py  # Local execution
-├── pipeline_components/
-│   ├── seq_retrieval/         # Sequence retrieval
-│   └── alignment/             # Alignment container
-├── webui/                     # Next.js frontend
-└── docs/                      # This documentation
-
-/var/lib/pavi/
-├── jobs/
-│   └── jobs.db               # SQLite database
-├── work/
-│   └── {job_id}/             # Work files
-└── results/
-    └── {job_id}/             # Final results
-```
-
-## Development
-
-### Code Quality Checks
-
-```bash
-cd /home/ec2-user/agr_pavi/api
-
-# Linting
-.venv/bin/ruff check src/
-
-# Type checking
-.venv/bin/mypy src/ --ignore-missing-imports
-```
-
-### Testing
-
-```bash
-# Submit test job
-curl -X POST http://localhost:8000/api/pipeline-job/ \
-  -H "Content-Type: application/json" \
-  -d '[...]'
-
-# Check job status
-curl http://localhost:8000/api/pipeline-job/{uuid}
-```
-
-## Troubleshooting
-
-See individual documentation files for detailed troubleshooting:
-
-- **clustalo issues**: [clustal-omega-build.md](clustal-omega-build.md#troubleshooting)
-- **Python issues**: [python-environment-setup.md](python-environment-setup.md#troubleshooting)
-- **Pipeline issues**: [local-ec2-deployment.md](local-ec2-deployment.md#troubleshooting)
+See [API Reference](api-reference.md) for complete documentation.
 
 ## Contributing
 
-1. Follow the coding conventions in [CLAUDE.md](../CLAUDE.md)
-2. Run `ruff` and `mypy` before submitting changes
-3. Update documentation for any new features
+1. Follow coding conventions in [CLAUDE.md](../CLAUDE.md)
+2. Run validation checks before PRs:
+   ```bash
+   make run-style-checks
+   make run-type-checks
+   make run-unit-tests
+   ```
+3. Update documentation for new features
+4. See [Testing Guide](testing-guide.md) for test requirements

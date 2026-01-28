@@ -192,3 +192,17 @@ CDK CLI via npm: `npx cdk <command>`.
 - `biopython` - Sequence manipulation and FASTA handling
 - `pysam` - SAM/BAM file operations
 - Clustal Omega - Multiple sequence alignment (external binary)
+
+## Documentation
+
+Comprehensive documentation is available in `docs/`:
+
+- [API Reference](docs/api-reference.md) - REST API endpoints and schemas
+- [Configuration Reference](docs/configuration-reference.md) - All environment variables
+- [Testing Guide](docs/testing-guide.md) - How to run and write tests
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Data Flow Diagrams](docs/data-flows.md) - System data flows
+- [Database Schemas](docs/database-schemas.md) - Storage schemas
+- [Security Guide](docs/security.md) - Security practices
+
+See [docs/README.md](docs/README.md) for the complete documentation index
