@@ -104,6 +104,31 @@ This mode is ideal for:
 - **RAM**: 4GB+ recommended (7.6GB for t3.large)
 - **Disk**: 20GB+ for work files and results
 
+### Current Dev Instance (t3.large)
+
+| Resource | Value |
+|----------|-------|
+| vCPUs | 2 |
+| RAM | 7.6 GB total (~5 GB available) |
+| Disk | 50 GB (43 GB free) |
+| Max parallel workers | 4 (configurable via `PAVI_LOCAL_MAX_WORKERS`) |
+
+### Capacity Estimates
+
+Clustal Omega scales approximately O(N²) with sequence count. Memory is typically the bottleneck before CPU.
+
+| Sequences | Expected Performance |
+|-----------|---------------------|
+| 2-10 | Seconds, trivial |
+| 10-50 | Seconds to ~1 min |
+| 50-100 | Minutes, comfortable |
+| 100-200 | Several minutes, may stress memory |
+| 200+ | Could hit memory limits depending on sequence length |
+
+For larger alignments (200+ sequences), consider:
+- Upgrading to t3.xlarge (16 GB RAM) or larger
+- Using the distributed AWS architecture (Step Functions + Batch)
+
 ### Software Requirements
 
 - Python 3.12
