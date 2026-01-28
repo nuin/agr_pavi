@@ -65,13 +65,20 @@ make run-server-dev      # FastAPI dev server on localhost:8000
 
 # WebUI (from webui/)
 PAVI_API_BASE_URL=http://localhost:8000 make run-server-dev  # Next.js on localhost:3000
+
+# WebUI with mock API (no backend required)
+npm run dev:mock         # Uses mock data for frontend-only development
 ```
 
 Note: The API docker container runs on port 8080, but `fastapi dev` uses 8000.
 
-### Running Single Tests
+### Running Tests
 ```bash
-# Python (from component directory)
+# Python - all tests with coverage (from component directory)
+make run-tests           # pytest --cov (all tests)
+make run-unit-tests      # pytest tests/a_unit/ only
+
+# Python - single test file or function
 .venv/bin/python -m pytest tests/a_unit/test_main.py -v
 .venv/bin/python -m pytest tests/a_unit/test_main.py::test_health_reporting -v
 
@@ -110,6 +117,9 @@ make open-cypress-image-diff-html-report  # View failed visual regression at loc
 
 Visual regression tests use `cypress-image-diff` and require the Docker container for consistent rendering. If tests fail, use the HTML report to inspect differences and update baselines.
 
+### Percy Visual Testing
+Percy visual testing runs against Vercel preview deployments. See `webui/VERCEL_PERCY_SETUP.md` for configuration details. The preview deployment uses `MOCK_API=true` to provide consistent mock data for visual snapshots.
+
 ### AWS Deployment
 ```bash
 make validate-dev        # CDK diff against dev environment
@@ -130,7 +140,7 @@ make -C shared_aws/py_package/ clean build install
 - flake8 for linting
 - pip-tools for dependency management (pyproject.toml -> requirements.txt)
 - 80% minimum test coverage (pytest with coverage)
-- Tests organized: `tests/a_unit/` for unit tests, `tests/b_integration/` for integration tests
+- Tests in `tests/a_unit/` (unit) and `tests/b_integration/` (integration) - prefix ensures execution order
 
 ## TypeScript/JavaScript Conventions
 

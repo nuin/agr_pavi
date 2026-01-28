@@ -2,7 +2,7 @@
 Job service module for PAVI API.
 
 This module provides job management functionality using AWS Step Functions
-and DynamoDB, replacing the previous in-memory Nextflow-based execution.
+and DynamoDB, or local SQLite and direct pipeline execution for EC2 deployment.
 """
 
 import json
@@ -18,6 +18,10 @@ from botocore.exceptions import ClientError
 from log_mgmt.log_manager import get_logger
 
 log = get_logger(__name__)
+
+# Import local components conditionally to avoid circular imports
+_local_job_store: Optional[Any] = None
+_local_pipeline_runner: Optional[Any] = None
 
 
 class JobServiceError(Exception):
@@ -114,10 +118,8 @@ class JobInfo:
 
 class JobService:
     """
-    Service for managing pipeline jobs using AWS Step Functions and DynamoDB.
-
-    This service replaces the in-memory job management with DynamoDB persistence
-    and Step Functions orchestration.
+    Service for managing pipeline jobs using AWS Step Functions and DynamoDB,
+    or local SQLite and direct pipeline execution for EC2 deployment.
     """
 
     def __init__(
@@ -126,6 +128,7 @@ class JobService:
         state_machine_arn: Optional[str] = None,
         s3_bucket: Optional[str] = None,
         use_step_functions: bool = True,
+        use_local_pipeline: bool = False,
     ):
         """
         Initialize the job service.
@@ -135,8 +138,10 @@ class JobService:
             state_machine_arn: Step Functions state machine ARN
             s3_bucket: S3 bucket for results
             use_step_functions: Whether to use Step Functions (False for local dev)
+            use_local_pipeline: Whether to use local pipeline execution (EC2 mode)
         """
         self.use_step_functions = use_step_functions
+        self.use_local_pipeline = use_local_pipeline
 
         # Get configuration from environment
         self.table_name = dynamodb_table_name or os.environ.get(
@@ -153,13 +158,30 @@ class JobService:
             "arn:aws:batch:us-east-1:123456789012:job-queue/pavi-pipeline-queue",
         )
 
+        # Local pipeline paths (from config or environment)
+        self.local_results_path = os.environ.get(
+            "PAVI_LOCAL_RESULTS_PATH", "/var/lib/pavi/results"
+        )
+
         # AWS clients - lazily initialized
         self._dynamodb = None
         self._sfn = None
         self._s3 = None
 
+        # Local storage - lazily initialized
+        self._local_store: Any = None
+
         # Local mode fallback (in-memory storage)
         self._local_jobs: dict[str, JobInfo] = {}
+
+    @property
+    def local_store(self) -> Any:
+        """Lazy initialization of local job store."""
+        if self._local_store is None and self.use_local_pipeline:
+            from local_job_store import LocalJobStore, get_local_job_store
+            store: LocalJobStore = get_local_job_store()
+            self._local_store = store
+        return self._local_store
 
     @property
     def dynamodb(self) -> Any:
@@ -207,7 +229,10 @@ class JobService:
             input_count=len(seq_regions),
         )
 
-        if self.use_step_functions:
+        if self.use_local_pipeline:
+            # Store in local SQLite database
+            self.local_store.create_job(job_id, seq_regions, len(seq_regions))
+        elif self.use_step_functions:
             self._store_job_dynamodb(job)
         else:
             self._local_jobs[job_id] = job
@@ -228,7 +253,9 @@ class JobService:
         Returns:
             Updated JobInfo object, or None if job not found
         """
-        if self.use_step_functions:
+        if self.use_local_pipeline:
+            return self._start_local_pipeline_execution(job_id, seq_regions)
+        elif self.use_step_functions:
             return self._start_step_functions_execution(job_id, seq_regions)
         else:
             return self._start_local_execution(job_id, seq_regions)
@@ -243,10 +270,29 @@ class JobService:
         Returns:
             JobInfo object or None if not found
         """
-        if self.use_step_functions:
+        if self.use_local_pipeline:
+            return self._get_job_local_store(job_id)
+        elif self.use_step_functions:
             return self._get_job_dynamodb(job_id)
         else:
             return self._local_jobs.get(job_id)
+
+    def _get_job_local_store(self, job_id: str) -> Optional[JobInfo]:
+        """Get job from local SQLite store."""
+        job_dict = self.local_store.get_job(job_id)
+        if not job_dict:
+            return None
+
+        return JobInfo(
+            job_id=job_dict["job_id"],
+            status=JobStatus(job_dict["status"]),
+            stage=JobStage(job_dict["stage"]) if job_dict.get("stage") else None,
+            created_at=job_dict.get("created_at"),
+            completed_at=job_dict.get("completed_at"),
+            input_count=int(job_dict.get("input_count", 0)),
+            sequences_processed=int(job_dict.get("sequences_processed", 0)),
+            error_message=job_dict.get("error_message"),
+        )
 
     def get_job_result_alignment(self, job_id: str) -> Optional[bytes]:
         """
@@ -262,10 +308,19 @@ class JobService:
         if not job or job.status != JobStatus.COMPLETED:
             return None
 
-        if self.use_step_functions and job.result_s3_uri:
+        if self.use_local_pipeline:
+            # Local pipeline mode - read from local results directory
+            filepath = os.path.join(
+                self.local_results_path, job_id, "alignment-output.aln"
+            )
+            if os.path.exists(filepath):
+                with open(filepath, "rb") as f:
+                    return f.read()
+            return None
+        elif self.use_step_functions and job.result_s3_uri:
             return self._get_s3_object(job.result_s3_uri)
         else:
-            # Local fallback - read from filesystem
+            # Legacy Nextflow - read from filesystem
             results_dir = os.environ.get("API_RESULTS_PATH_PREFIX", "./results/")
             filepath = os.path.join(
                 results_dir, f"pipeline-results_{job_id}", "alignment-output.aln"
@@ -289,14 +344,23 @@ class JobService:
         if not job or job.status != JobStatus.COMPLETED:
             return None
 
-        if self.use_step_functions and job.result_s3_uri:
+        if self.use_local_pipeline:
+            # Local pipeline mode - read from local results directory
+            filepath = os.path.join(
+                self.local_results_path, job_id, "aligned_seq_info.json"
+            )
+            if os.path.exists(filepath):
+                with open(filepath, "rb") as f:
+                    return f.read()
+            return None
+        elif self.use_step_functions and job.result_s3_uri:
             # seq-info is in same directory as alignment
             s3_uri = job.result_s3_uri.replace(
                 "alignment-output.aln", "aligned_seq_info.json"
             )
             return self._get_s3_object(s3_uri)
         else:
-            # Local fallback
+            # Legacy Nextflow - read from filesystem
             results_dir = os.environ.get("API_RESULTS_PATH_PREFIX", "./results/")
             filepath = os.path.join(
                 results_dir, f"pipeline-results_{job_id}", "aligned_seq_info.json"
@@ -457,6 +521,79 @@ class JobService:
             job.stage = JobStage.SEQUENCE_RETRIEVAL
         return job
 
+    def _start_local_pipeline_execution(
+        self, job_id: str, seq_regions: list[dict[str, Any]]
+    ) -> Optional[JobInfo]:
+        """
+        Start local pipeline execution (EC2 deployment mode).
+
+        Runs seq_retrieval and alignment directly as Python modules,
+        storing results in local filesystem.
+        """
+        from local_pipeline import get_local_pipeline_runner, LocalPipelineError
+
+        # Update job status to RUNNING
+        self.local_store.update_job(
+            job_id,
+            status=JobStatus.RUNNING.value,
+            stage=JobStage.SEQUENCE_RETRIEVAL.value,
+        )
+
+        def progress_callback(jid: str, stage: str, sequences_processed: int) -> None:
+            """Update job progress in local store."""
+            try:
+                self.local_store.update_job(
+                    jid,
+                    stage=stage,
+                    sequences_processed=sequences_processed,
+                )
+            except Exception as e:
+                log.warning(f"Failed to update progress for job {jid}: {e}")
+
+        runner = get_local_pipeline_runner()
+        runner.progress_callback = progress_callback
+
+        try:
+            result = runner.run_pipeline(job_id, seq_regions)
+
+            # Update job as completed
+            now = datetime.utcnow().isoformat() + "Z"
+            self.local_store.update_job(
+                job_id,
+                status=JobStatus.COMPLETED.value,
+                stage=JobStage.DONE.value,
+                completed_at=now,
+                sequences_processed=result.get("sequences_processed", len(seq_regions)),
+                result_path=result.get("alignment_file"),
+            )
+
+            log.info(f"Local pipeline completed for job {job_id}")
+            return self.get_job(job_id)
+
+        except LocalPipelineError as e:
+            now = datetime.utcnow().isoformat() + "Z"
+            self.local_store.update_job(
+                job_id,
+                status=JobStatus.FAILED.value,
+                stage=JobStage.ERROR.value,
+                completed_at=now,
+                error_message=f"{e.stage}: {str(e)}"[:1000],
+            )
+            log.error(f"Local pipeline failed for job {job_id}: {e}")
+            raise JobExecutionError(str(e), cause=e.cause)
+
+        except Exception as e:
+            now = datetime.utcnow().isoformat() + "Z"
+            self.local_store.update_job(
+                job_id,
+                status=JobStatus.FAILED.value,
+                stage=JobStage.ERROR.value,
+                completed_at=now,
+                error_message=f"Unexpected error: {str(e)}"[:1000],
+            )
+            log.error(f"Local pipeline failed unexpectedly for job {job_id}: {e}")
+            raise JobExecutionError(f"Unexpected error: {str(e)}")
+
     def _get_s3_object(self, s3_uri: str) -> Optional[bytes]:
         """Get an object from S3 by URI."""
         try:
@@ -575,7 +712,11 @@ class JobService:
         Returns:
             JobInfo object or None if not found
         """
-        if self.use_step_functions:
+        if self.use_local_pipeline:
+            # Local pipeline mode - just fetch from local store
+            # (status is updated synchronously during pipeline execution)
+            return self._get_job_local_store(job_id)
+        elif self.use_step_functions:
             job = self._get_job_dynamodb(job_id)
             if job and job.status in [JobStatus.RUNNING, JobStatus.PENDING]:
                 # Sync status from Step Functions
@@ -594,9 +735,12 @@ def get_job_service() -> JobService:
     global _job_service
     if _job_service is None:
         # Import config to get the environment-aware setting
-        # Local = Nextflow, AWS (dev/staging/prod) = Step Functions
+        # Local pipeline > Step Functions > Nextflow
         from config import get_api_config
 
         config = get_api_config()
-        _job_service = JobService(use_step_functions=config.pipeline.use_step_functions)
+        _job_service = JobService(
+            use_step_functions=config.pipeline.use_step_functions,
+            use_local_pipeline=config.pipeline.use_local_pipeline,
+        )
     return _job_service

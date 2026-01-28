@@ -42,6 +42,13 @@ class PipelineConfig:
     enable_step_functions_rollout: bool
     step_functions_rollout_percentage: int  # 0-100
 
+    # Local pipeline execution (for EC2 deployment)
+    use_local_pipeline: bool = False
+    local_jobs_path: str = "/var/lib/pavi/jobs"
+    local_results_path: str = "/var/lib/pavi/results"
+    local_work_path: str = "/var/lib/pavi/work"
+    local_max_workers: int = 4  # Max parallel sequence retrieval tasks
+
 
 @dataclass
 class APIConfig:
@@ -77,11 +84,19 @@ def get_config() -> APIConfig:
     """
     env = get_environment()
 
+    # Check for local pipeline mode first (takes precedence)
+    use_local_pipeline_env = os.environ.get("USE_LOCAL_PIPELINE")
+    use_local_pipeline = use_local_pipeline_env is not None and use_local_pipeline_env.lower() == "true"
+
     # Determine Step Functions settings based on environment
     # Local = Nextflow, AWS (dev/staging/prod) = Step Functions
     # Can be overridden via USE_STEP_FUNCTIONS env var
+    # Local pipeline mode disables both Step Functions and Nextflow
     use_step_functions_env = os.environ.get("USE_STEP_FUNCTIONS")
-    if use_step_functions_env is not None:
+    if use_local_pipeline:
+        # Local pipeline mode: disable Step Functions
+        use_step_functions = False
+    elif use_step_functions_env is not None:
         use_step_functions = use_step_functions_env.lower() == "true"
     else:
         # Auto-detect: local uses Nextflow, AWS environments use Step Functions
@@ -135,6 +150,12 @@ def get_config() -> APIConfig:
     assert isinstance(results_bucket, str)
     assert isinstance(work_bucket, str)
 
+    # Local pipeline configuration
+    local_jobs_path = os.environ.get("PAVI_LOCAL_JOBS_PATH", "/var/lib/pavi/jobs")
+    local_results_path = os.environ.get("PAVI_LOCAL_RESULTS_PATH", "/var/lib/pavi/results")
+    local_work_path = os.environ.get("PAVI_LOCAL_WORK_PATH", "/var/lib/pavi/work")
+    local_max_workers = int(os.environ.get("PAVI_LOCAL_MAX_WORKERS", "4"))
+
     pipeline_config = PipelineConfig(
         state_machine_arn=os.environ.get("STEP_FUNCTIONS_STATE_MACHINE_ARN")
         or defaults["state_machine_arn"],
@@ -146,6 +167,11 @@ def get_config() -> APIConfig:
         or defaults["job_queue_arn"],
         enable_step_functions_rollout=enable_rollout,
         step_functions_rollout_percentage=rollout_percentage,
+        use_local_pipeline=use_local_pipeline,
+        local_jobs_path=local_jobs_path,
+        local_results_path=local_results_path,
+        local_work_path=local_work_path,
+        local_max_workers=local_max_workers,
     )
 
     return APIConfig(
@@ -157,6 +183,22 @@ def get_config() -> APIConfig:
         nextflow_out_dir=os.environ.get("API_NEXTFLOW_OUT_DIR", "./"),
         pipeline_image_tag=os.environ.get("API_PIPELINE_IMAGE_TAG", "latest"),
     )
+
+
+def should_use_local_pipeline(config: APIConfig) -> bool:
+    """
+    Determine if local pipeline execution should be used.
+
+    Local pipeline mode runs seq_retrieval and alignment directly as Python
+    modules instead of using Step Functions or Nextflow.
+
+    Args:
+        config: API configuration
+
+    Returns:
+        True if local pipeline should be used, False otherwise
+    """
+    return config.pipeline.use_local_pipeline
 
 
 def should_use_step_functions(config: APIConfig, job_id: Optional[str] = None) -> bool:
@@ -173,6 +215,10 @@ def should_use_step_functions(config: APIConfig, job_id: Optional[str] = None) -
     Returns:
         True if Step Functions should be used, False otherwise
     """
+    # Local pipeline mode takes precedence
+    if config.pipeline.use_local_pipeline:
+        return False
+
     # If Step Functions is disabled, always use Nextflow
     if not config.pipeline.use_step_functions:
         return False

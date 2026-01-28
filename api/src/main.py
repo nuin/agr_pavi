@@ -24,7 +24,7 @@ from job_service import (
 )
 
 # Import configuration module
-from config import get_api_config, should_use_step_functions
+from config import get_api_config, should_use_step_functions, should_use_local_pipeline
 
 logger = get_logger(name=__name__)
 
@@ -36,8 +36,9 @@ nf_workdir = _config.nextflow_out_dir + "work/"
 api_execution_env = getenv("API_EXECUTION_ENV", "local")
 api_pipeline_image_tag = _config.pipeline_image_tag
 
-# Feature flag for Step Functions mode (from config)
+# Feature flags for execution mode (from config)
 USE_STEP_FUNCTIONS = _config.pipeline.use_step_functions
+USE_LOCAL_PIPELINE = _config.pipeline.use_local_pipeline
 
 
 class Pipeline_seq_region(BaseModel):
@@ -191,6 +192,57 @@ def run_pipeline_step_functions(
             logger.error(f"Failed to update job status after error: {update_err}")
 
 
+def run_pipeline_local(
+    pipeline_seq_regions: list[Pipeline_seq_region],
+    job_id: str,
+    job_service: JobService,
+) -> None:
+    """
+    Run the backend alignment pipeline using local execution (EC2 mode).
+
+    Args:
+        pipeline_seq_regions: sequence regions for pipeline input
+        job_id: Job ID
+        job_service: JobService instance
+
+    Note:
+        This function runs in the background. Errors are logged and
+        the job status is updated to FAILED in the local store.
+    """
+    logger.info(f"Initiating local pipeline run for job {job_id}.")
+
+    # Convert Pydantic models to dicts
+    seq_regions = [sr.model_dump() for sr in pipeline_seq_regions]
+
+    try:
+        job_service.start_job(job_id, seq_regions)
+        logger.info(f"Local pipeline execution completed for job {job_id}.")
+    except JobServiceError as e:
+        # JobService already handles updating the job status to FAILED
+        logger.error(f"Failed to run local pipeline for job {job_id}: {e}")
+    except Exception as e:
+        # Unexpected error - try to update job status
+        logger.error(
+            f"Unexpected error running local pipeline for job {job_id}: {e}"
+        )
+        try:
+            from job_service import JobStatus as SFStatus, JobStage
+            from local_job_store import get_local_job_store
+            from datetime import datetime
+
+            store = get_local_job_store()
+            now = datetime.utcnow().isoformat() + "Z"
+            store.update_job(
+                job_id,
+                status=SFStatus.FAILED.value,
+                stage=JobStage.ERROR.value,
+                completed_at=now,
+                error_message=f"Unexpected error: {str(e)[:500]}",
+            )
+        except Exception as update_err:
+            logger.error(f"Failed to update job status after error: {update_err}")
+
+
 app = FastAPI()
 router = APIRouter(prefix="/api")
 
@@ -329,18 +381,32 @@ async def help_msg() -> dict[str, str]:
     tags=["metadata"],
 )
 async def health() -> dict[str, Any]:
-    mode = "step_functions" if USE_STEP_FUNCTIONS else "nextflow"
+    if USE_LOCAL_PIPELINE:
+        mode = "local_pipeline"
+    elif USE_STEP_FUNCTIONS:
+        mode = "step_functions"
+    else:
+        mode = "nextflow"
+
     response: dict[str, Any] = {
         "status": "up",
         "execution_mode": mode,
         "environment": _config.environment.value,
     }
 
-    # Add rollout info if enabled
-    if _config.pipeline.enable_step_functions_rollout:
+    # Add rollout info if enabled (only for Step Functions)
+    if _config.pipeline.enable_step_functions_rollout and USE_STEP_FUNCTIONS:
         response["rollout"] = {
             "enabled": True,
             "percentage": _config.pipeline.step_functions_rollout_percentage,
+        }
+
+    # Add local pipeline paths if in local mode
+    if USE_LOCAL_PIPELINE:
+        response["local_paths"] = {
+            "jobs": _config.pipeline.local_jobs_path,
+            "results": _config.pipeline.local_results_path,
+            "work": _config.pipeline.local_work_path,
         }
 
     return response
@@ -368,18 +434,66 @@ async def deployment_status() -> dict[str, Any]:
 
     components: dict[str, Any] = {}
 
+    # Determine execution mode
+    if USE_LOCAL_PIPELINE:
+        exec_mode = "local_pipeline"
+    elif USE_STEP_FUNCTIONS:
+        exec_mode = "step_functions"
+    else:
+        exec_mode = "nextflow"
+
     # API Status
     components["api"] = {
         "name": "API Service",
         "status": "healthy",
         "environment": _config.environment.value,
-        "execution_mode": "step_functions" if USE_STEP_FUNCTIONS else "nextflow",
+        "execution_mode": exec_mode,
         "details": {
             "host": _config.api_host,
             "port": _config.api_port,
             "debug": _config.debug,
         },
     }
+
+    # Local Pipeline Status (if enabled)
+    if USE_LOCAL_PIPELINE:
+        local_status: dict[str, Any] = {
+            "name": "Local Pipeline",
+            "status": "healthy",
+            "details": {
+                "jobs_path": _config.pipeline.local_jobs_path,
+                "results_path": _config.pipeline.local_results_path,
+                "work_path": _config.pipeline.local_work_path,
+                "max_workers": _config.pipeline.local_max_workers,
+            },
+        }
+
+        # Check if directories exist and are writable
+        import os
+        for path_name, path in [
+            ("jobs", _config.pipeline.local_jobs_path),
+            ("results", _config.pipeline.local_results_path),
+            ("work", _config.pipeline.local_work_path),
+        ]:
+            if not os.path.exists(path):
+                local_status["details"][f"{path_name}_exists"] = False
+            elif not os.access(path, os.W_OK):
+                local_status["details"][f"{path_name}_writable"] = False
+                local_status["status"] = "degraded"
+            else:
+                local_status["details"][f"{path_name}_exists"] = True
+                local_status["details"][f"{path_name}_writable"] = True
+
+        # Check if clustalo is available
+        import shutil
+        clustalo_path = shutil.which("clustalo")
+        if clustalo_path:
+            local_status["details"]["clustalo"] = clustalo_path
+        else:
+            local_status["details"]["clustalo"] = "not found"
+            local_status["status"] = "degraded"
+
+        components["local_pipeline"] = local_status
 
     # Step Functions Status
     sf_status: dict[str, Any] = {
@@ -595,6 +709,7 @@ async def create_new_pipeline_job(
     """
     Create and start a new pipeline job.
 
+    In local pipeline mode (EC2), job is created in SQLite and executed directly.
     In Step Functions mode, job is created in DynamoDB and execution started.
     In Nextflow mode (legacy), job is stored in-memory and Nextflow is invoked.
 
@@ -603,6 +718,28 @@ async def create_new_pipeline_job(
     """
     # Generate job ID first for consistent routing
     new_job_id = str(uuid1())
+
+    # Check local pipeline mode first (takes precedence)
+    use_local = should_use_local_pipeline(_config)
+
+    if use_local:
+        # Local pipeline mode (EC2 deployment)
+        job_service = get_job_service()
+        seq_regions = [sr.model_dump() for sr in pipeline_seq_regions]
+
+        # Create job in local SQLite store
+        job_info = job_service.create_job(seq_regions)
+        logger.info(f"Created local pipeline job {job_info.job_id}.")
+
+        # Start local execution in background
+        background_tasks.add_task(
+            func=run_pipeline_local,
+            pipeline_seq_regions=pipeline_seq_regions,
+            job_id=job_info.job_id,
+            job_service=job_service,
+        )
+
+        return Pipeline_job.from_job_info(job_info)
 
     # Determine which backend to use (supports gradual rollout)
     use_sf = should_use_step_functions(_config, new_job_id)
@@ -651,10 +788,11 @@ async def get_pipeline_job_handler(uuid: UUID) -> Pipeline_job:
     For running jobs in Step Functions mode, this will sync the status
     from the Step Functions execution before returning.
     """
-    if USE_STEP_FUNCTIONS:
+    if USE_LOCAL_PIPELINE or USE_STEP_FUNCTIONS:
         job_service = get_job_service()
         try:
             # Use get_job_with_sync to auto-update status from Step Functions
+            # (for local pipeline, this just fetches from SQLite)
             job_info = job_service.get_job_with_sync(str(uuid))
             if job_info is None:
                 raise HTTPException(status_code=404, detail="Job not found.")
@@ -687,7 +825,7 @@ async def get_pipeline_job_alignment_result(uuid: UUID) -> StreamingResponse:
     Returns 400 if the job has failed or is not yet complete.
     Returns 404 if the job or result file is not found.
     """
-    if USE_STEP_FUNCTIONS:
+    if USE_LOCAL_PIPELINE or USE_STEP_FUNCTIONS:
         job_service = get_job_service()
 
         # First sync and check job status
@@ -768,7 +906,7 @@ async def get_pipeline_job_seq_info_result(uuid: UUID) -> StreamingResponse:
     Returns 400 if the job has failed or is not yet complete.
     Returns 404 if the job or result file is not found.
     """
-    if USE_STEP_FUNCTIONS:
+    if USE_LOCAL_PIPELINE or USE_STEP_FUNCTIONS:
         job_service = get_job_service()
 
         # First sync and check job status
@@ -845,9 +983,17 @@ async def get_pipeline_job_logs(uuid: UUID) -> StreamingResponse:
     """
     Get job logs.
 
-    Note: In Step Functions mode, logs are retrieved from CloudWatch.
+    Note: In local pipeline mode, logs are from the local pipeline execution.
+    In Step Functions mode, logs are retrieved from CloudWatch.
     In Nextflow mode, logs are retrieved from Nextflow log command.
     """
+    if USE_LOCAL_PIPELINE:
+        # TODO: Implement local log retrieval (from work directory)
+        raise HTTPException(
+            status_code=501,
+            detail="Log retrieval not yet implemented for local pipeline mode.",
+        )
+
     if USE_STEP_FUNCTIONS:
         # TODO: Implement CloudWatch log retrieval for Step Functions mode
         raise HTTPException(
