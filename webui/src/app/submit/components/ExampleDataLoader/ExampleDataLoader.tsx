@@ -44,17 +44,6 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
         ],
     },
     {
-        id: 'insulin-family',
-        name: 'Insulin Family',
-        description: 'Multi-species comparison of insulin proteins',
-        category: 'cross-species',
-        genes: [
-            { geneId: 'HGNC:6081', geneName: 'INS', species: 'Homo sapiens' },
-            { geneId: 'MGI:96573', geneName: 'Ins2', species: 'Mus musculus' },
-            { geneId: 'RGD:2917', geneName: 'Ins2', species: 'Rattus norvegicus' },
-        ],
-    },
-    {
         id: 'pax6-evolution',
         name: 'PAX6 Eye Development',
         description: 'Highly conserved eye development transcription factor',
