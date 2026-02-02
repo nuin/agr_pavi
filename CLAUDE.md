@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 AGR PAVI (Proteins Annotations and Variants Inspector) is a bioinformatics web application for visualizing protein sequence alignments with variant annotations across model organisms. It provides ortholog comparisons using Clustal Omega for alignment and EMBL-EBI's Nightingale components for visualization.
 
 **Live:** https://pavi.alliancegenome.org/submit
+**Dev:** https://dev-pavi.alliancegenome.org
 
 ## Architecture
 
@@ -31,7 +32,15 @@ agr_pavi/
 4. **collectAndAlignSeqInfo** merges metadata with alignment coordinates
 5. Results returned: `alignment-output.aln` + `aligned_seq_info.json`
 
-Currently uses Nextflow on AWS Batch/ECS; migrating to AWS Step Functions (see `docs/step-functions-design.md`).
+### Pipeline Execution Modes
+
+| Mode | Storage | Orchestration | Use Case |
+|------|---------|---------------|----------|
+| **Local Pipeline** | SQLite + Local FS | Direct Python | Dev on EC2 |
+| **Step Functions** | DynamoDB + S3 | AWS Step Functions | Production |
+| **Nextflow** (legacy) | In-memory + S3 | Nextflow on Batch | Deprecated |
+
+Set via `USE_LOCAL_PIPELINE=true` or `USE_STEP_FUNCTIONS=true`. See `docs/configuration-reference.md`.
 
 ### API Endpoints
 - `POST /api/pipeline-job/` - Submit alignment job with sequence regions
@@ -120,7 +129,45 @@ Visual regression tests use `cypress-image-diff` and require the Docker containe
 ### Percy Visual Testing
 Percy visual testing runs against Vercel preview deployments. See `webui/VERCEL_PERCY_SETUP.md` for configuration details. The preview deployment uses `MOCK_API=true` to provide consistent mock data for visual snapshots.
 
-### AWS Deployment
+### Local EC2 Deployment (Dev)
+
+The dev environment runs directly on EC2 with Caddy as reverse proxy:
+
+```
+Internet → Caddy (HTTPS/Let's Encrypt) → localhost:3000 (WebUI)
+                                       → localhost:8000 (API)
+```
+
+**Caddyfile** (`/etc/caddy/Caddyfile`):
+```
+dev-pavi.alliancegenome.org {
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+    handle {
+        reverse_proxy localhost:3000
+    }
+}
+```
+
+**Start services:**
+```bash
+# API (production)
+cd api/src
+USE_LOCAL_PIPELINE=true ../.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+
+# WebUI (production) - build once, then start
+cd webui
+PAVI_API_BASE_URL=http://localhost:8000 npm run build
+PAVI_API_BASE_URL=http://localhost:8000 npm run start
+
+# Caddy (systemd)
+sudo systemctl start caddy
+```
+
+**Note:** Do NOT use `npm run dev` for production - it's slow and shows warnings.
+
+### AWS Deployment (Elastic Beanstalk)
 ```bash
 make validate-dev        # CDK diff against dev environment
 make deploy-dev          # Deploy full stack to dev
