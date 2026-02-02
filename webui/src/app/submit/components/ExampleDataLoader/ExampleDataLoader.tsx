@@ -67,13 +67,13 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
         ],
     },
     {
-        id: 'worm-fly-kinase',
-        name: 'Worm-Fly Cell Cycle',
-        description: 'CDK cell cycle kinase comparison in worm and fly',
+        id: 'worm-fly-hsp70',
+        name: 'Worm-Fly Heat Shock',
+        description: 'HSP70 chaperone - highly conserved stress response protein',
         category: 'cross-species',
         genes: [
-            { geneId: 'WB:WBGene00000405', geneName: 'cdk-1', species: 'Caenorhabditis elegans' },
-            { geneId: 'FB:FBgn0004106', geneName: 'cdc2', species: 'Drosophila melanogaster' },
+            { geneId: 'WB:WBGene00002007', geneName: 'hsp-1', species: 'Caenorhabditis elegans' },
+            { geneId: 'FB:FBgn0013278', geneName: 'Hsc70-4', species: 'Drosophila melanogaster' },
         ],
     },
     {
