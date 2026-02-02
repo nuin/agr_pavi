@@ -56,13 +56,14 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
         ],
     },
     {
-        id: 'cftr-comparison',
-        name: 'CFTR Human-Mouse',
-        description: 'Cystic fibrosis transmembrane conductance regulator comparison',
+        id: 'actin-conserved',
+        name: 'Actin (Highly Conserved)',
+        description: 'Beta-actin cytoskeletal protein - one of the most conserved proteins',
         category: 'advanced',
         genes: [
-            { geneId: 'HGNC:1884', geneName: 'CFTR', species: 'Homo sapiens' },
-            { geneId: 'MGI:88388', geneName: 'Cftr', species: 'Mus musculus' },
+            { geneId: 'HGNC:132', geneName: 'ACTB', species: 'Homo sapiens' },
+            { geneId: 'MGI:87904', geneName: 'Actb', species: 'Mus musculus' },
+            { geneId: 'ZFIN:ZDB-GENE-000329-3', geneName: 'actb1', species: 'Danio rerio' },
         ],
     },
     {
