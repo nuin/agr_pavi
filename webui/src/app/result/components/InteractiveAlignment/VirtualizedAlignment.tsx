@@ -27,6 +27,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 
 import { SeqInfoDict } from './types';
+import styles from './VirtualizedAlignment.module.css';
 
 // Constants for virtualization and display
 const SEQUENCE_HEIGHT = 36; // Height per sequence in pixels (larger for readability)
@@ -140,10 +141,10 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                             to: i
                         },
                         id: `feature_${alignment_seq_name}_${embedded_variant.variant_id}`,
-                        borderColor: 'black',
-                        fillColor: 'black',
-                        mouseOverBorderColor: 'black',
-                        mouseOverFillColor: 'transparent'
+                        borderColor: '#f59e0b',
+                        fillColor: 'rgba(245, 158, 11, 0.3)',
+                        mouseOverBorderColor: '#d97706',
+                        mouseOverFillColor: 'rgba(217, 119, 6, 0.4)'
                     });
 
                     // Add variant to variant track
@@ -158,7 +159,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         accession: embedded_variant.variant_id,
                         start: embedded_variant.alignment_start_pos,
                         end: embedded_variant.alignment_end_pos,
-                        color: 'gray',
+                        color: '#f59e0b',
                         shape: variantShape
                     });
                 }
@@ -179,7 +180,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         const maxLabelLength = fullAlignmentData.reduce((maxLength, alignment) => {
             return Math.max(maxLength, alignment.name.length);
         }, 0);
-        return maxLabelLength * 9;
+        return Math.max(maxLabelLength * 9, 100);
     }, [fullAlignmentData]);
 
     // Extract allele information for display
@@ -248,7 +249,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             name: 'Conservation',
             range: [0, 100],
             color: '#2563eb',
-            fill: 'rgba(37, 99, 235, 0.2)',
+            fill: 'rgba(37, 99, 235, 0.15)',
             lineCurve: 'curveMonotoneX',
             values
         }];
@@ -275,52 +276,52 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         setAlignmentColorScheme(newColorScheme);
     }, []);
 
-    // Color scheme options
+    // Color scheme options - organized by category
     const aminoAcidcolorSchemeOptions: ColorSchemeSelectGroup[] = [
         {
-            groupLabel: 'Common options',
+            groupLabel: 'Recommended',
             items: [
-                { label: 'Similarity', value: 'conservation' },
-                { label: 'Clustal2', value: 'clustal2' }
+                { label: 'Clustal2', value: 'clustal2' },
+                { label: 'Conservation', value: 'conservation' }
             ]
         },
         {
-            groupLabel: 'Physical properties',
+            groupLabel: 'Physical Properties',
             items: [
+                { label: 'Hydrophobicity', value: 'hydro' },
+                { label: 'Charged', value: 'charged' },
+                { label: 'Polar', value: 'polar' },
                 { label: 'Aliphatic', value: 'aliphatic' },
                 { label: 'Aromatic', value: 'aromatic' },
-                { label: 'Charged', value: 'charged' },
                 { label: 'Positive', value: 'positive' },
-                { label: 'Negative', value: 'negative' },
-                { label: 'Hydrophobicity', value: 'hydro' },
-                { label: 'Polar', value: 'polar' }
+                { label: 'Negative', value: 'negative' }
             ]
         },
         {
-            groupLabel: 'Structural properties',
+            groupLabel: 'Structural',
             items: [
-                { label: 'Buried index', value: 'buried_index' },
-                { label: 'Helix propensity', value: 'helix_propensity' },
-                { label: 'Strand propensity', value: 'strand_propensity' },
-                { label: 'Turn propensity', value: 'turn_propensity' }
+                { label: 'Buried Index', value: 'buried_index' },
+                { label: 'Helix Propensity', value: 'helix_propensity' },
+                { label: 'Strand Propensity', value: 'strand_propensity' },
+                { label: 'Turn Propensity', value: 'turn_propensity' }
             ]
         },
         {
-            groupLabel: 'Other color schemes',
+            groupLabel: 'Classic Schemes',
             items: [
-                { label: 'Cinema', value: 'cinema' },
-                { label: 'Lesk', value: 'lesk' },
-                { label: 'Mae', value: 'mae' },
                 { label: 'Taylor', value: 'taylor' },
-                { label: 'Zappo', value: 'zappo' }
+                { label: 'Zappo', value: 'zappo' },
+                { label: 'Lesk', value: 'lesk' },
+                { label: 'Cinema', value: 'cinema' },
+                { label: 'Mae', value: 'mae' }
             ]
         }
     ];
 
     const itemGroupTemplate = (option: ColorSchemeSelectGroup) => {
         return (
-            <div>
-                <b>{option.groupLabel}</b>
+            <div className={styles.colorSchemeGroup}>
+                {option.groupLabel}
             </div>
         );
     };
@@ -431,6 +432,13 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     // Height of visible MSA component
     const visibleMsaHeight = visibleData.length * SEQUENCE_HEIGHT;
 
+    // Get variant type class
+    const getVariantTypeClass = (type: string): string => {
+        if (type === 'deletion') return styles.deletion;
+        if (type === 'insertion') return styles.insertion;
+        return styles.substitution;
+    };
+
     return (
         <div
             ref={containerRef}
@@ -438,265 +446,188 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             onKeyDown={handleKeyDown}
             role="application"
             aria-label="Alignment viewer. Use arrow keys to pan, +/- to zoom, Home/End to jump to start/end"
-            style={{ outline: 'none' }}
+            className={styles.alignmentContainer}
         >
-            {/* Allele Information Panel - shown when variants exist */}
+            {/* Variant Information Panel */}
             {alleleInfo.length > 0 && (
-                <div style={{
-                    marginBottom: '1rem',
-                    padding: '0.75rem',
-                    backgroundColor: 'var(--agr-gray-50, #f8f9fa)',
-                    borderRadius: '6px',
-                    border: '1px solid var(--agr-gray-200, #e9ecef)'
-                }}>
-                    <div style={{
-                        fontWeight: 600,
-                        marginBottom: '0.5rem',
-                        fontSize: '0.9rem',
-                        color: 'var(--agr-gray-700, #495057)'
-                    }}>
-                        Variant Information ({alleleInfo.length} variant{alleleInfo.length !== 1 ? 's' : ''})
+                <div className={styles.variantPanel}>
+                    <div className={styles.variantPanelHeader}>
+                        <div className={styles.variantIcon}>
+                            <i className="pi pi-bolt" aria-hidden="true" />
+                        </div>
+                        <span className={styles.variantTitle}>Variant Information</span>
+                        <span className={styles.variantCount}>
+                            {alleleInfo.length} variant{alleleInfo.length !== 1 ? 's' : ''}
+                        </span>
                     </div>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                        gap: '0.5rem',
-                        maxHeight: '150px',
-                        overflowY: 'auto'
-                    }}>
+                    <div className={styles.variantGrid}>
                         {alleleInfo.map((allele, idx) => (
-                            <div key={idx} style={{
-                                padding: '0.5rem',
-                                backgroundColor: 'white',
-                                borderRadius: '4px',
-                                border: '1px solid var(--agr-gray-200, #dee2e6)',
-                                fontSize: '0.8rem'
-                            }}>
-                                <div style={{ fontWeight: 500, color: 'var(--agr-primary, #0066cc)' }}>
-                                    {allele.variantId}
-                                </div>
-                                <div style={{ color: '#666', marginTop: '2px' }}>
-                                    <span style={{ fontFamily: 'monospace' }}>
+                            <div key={idx} className={styles.variantCard}>
+                                <div className={styles.variantId}>{allele.variantId}</div>
+                                <div className={styles.variantDetails}>
+                                    <span className={styles.variantChange}>
                                         {allele.refSeq} → {allele.altSeq}
                                     </span>
-                                    <span style={{
-                                        marginLeft: '0.5rem',
-                                        padding: '0 4px',
-                                        backgroundColor: allele.type === 'deletion' ? '#fee2e2' :
-                                                        allele.type === 'insertion' ? '#dcfce7' : '#fef3c7',
-                                        borderRadius: '3px',
-                                        fontSize: '0.7rem',
-                                        textTransform: 'uppercase'
-                                    }}>
+                                    <span className={`${styles.variantTypeBadge} ${getVariantTypeClass(allele.type)}`}>
                                         {allele.type}
                                     </span>
                                 </div>
-                                <div style={{ color: '#888', fontSize: '0.75rem', marginTop: '2px' }}>
-                                    {allele.position}
-                                </div>
+                                <div className={styles.variantPosition}>{allele.position}</div>
                             </div>
                         ))}
                     </div>
                 </div>
             )}
 
-            {/* Controls Row */}
-            <div style={{
-                paddingBottom: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '1rem'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <label htmlFor="dd-colorscheme">Color scheme: </label>
+            {/* Toolbar */}
+            <div className={styles.toolbar}>
+                <div className={styles.toolbarSection}>
+                    <span className={styles.toolbarLabel}>Color:</span>
                     <Dropdown
                         id="dd-colorscheme"
-                        placeholder="Select an alignment color scheme"
+                        placeholder="Select color scheme"
                         value={alignmentColorScheme}
                         onChange={(e) => updateAlignmentColorScheme(e.value)}
                         options={aminoAcidcolorSchemeOptions}
                         optionGroupChildren="items"
                         optionGroupLabel="groupLabel"
                         optionGroupTemplate={itemGroupTemplate}
+                        className={styles.colorSchemeDropdown}
                     />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label className={styles.conservationToggle}>
                     <input
                         type="checkbox"
-                        id="conservation-overlay"
                         checked={showConservation}
                         onChange={(e) => setShowConservation(e.target.checked)}
-                        style={{ cursor: 'pointer' }}
                     />
-                    <label htmlFor="conservation-overlay" style={{ cursor: 'pointer', fontSize: '0.9rem' }}>
-                        Show conservation
-                    </label>
-                </div>
+                    <span>Show Conservation</span>
+                </label>
 
-                <span
-                    style={{
-                        fontSize: '12px',
-                        color: '#666'
-                    }}
-                >
-                    {visibleData.length} of {fullAlignmentData.length} sequences
+                <span className={styles.sequenceCount}>
+                    <strong>{visibleData.length}</strong> of <strong>{fullAlignmentData.length}</strong> sequences
                 </span>
-                <span
-                    style={{
-                        fontSize: '11px',
-                        color: '#888',
-                        marginLeft: 'auto'
-                    }}
-                    aria-hidden="true"
-                >
-                    Keys: ←→ pan | ↑↓ scroll | +/- zoom | Home/End jump
-                </span>
+
+                <div className={styles.keyboardHints} aria-hidden="true">
+                    <span className={styles.keyHint}><kbd>←</kbd><kbd>→</kbd> pan</span>
+                    <span className={styles.keyHint}><kbd>↑</kbd><kbd>↓</kbd> scroll</span>
+                    <span className={styles.keyHint}><kbd>+</kbd><kbd>-</kbd> zoom</span>
+                    <span className={styles.keyHint}><kbd>Home</kbd><kbd>End</kbd> jump</span>
+                </div>
 
                 {props.jobUuid && (
                     <Button
                         icon="pi pi-external-link"
                         label="Full Screen"
-                        className="p-button-sm p-button-outlined"
+                        className={`p-button-sm p-button-outlined ${styles.fullScreenButton}`}
                         onClick={() => {
                             const params = new URLSearchParams();
                             params.set('uuid', props.jobUuid!);
                             window.open(`/alignment?${params.toString()}`, '_blank');
                         }}
-                        style={{ marginLeft: '1rem' }}
                     />
                 )}
             </div>
-            <div id="alignment-view-container">
-                {/* Variant overview track - only show if there are variants */}
+
+            {/* Alignment View */}
+            <div className={styles.alignmentViewWrapper}>
+                {/* Variant overview track */}
                 {variantTrackData.length > 0 && (
-                    <div style={{ paddingLeft: labelWidth.toString() + 'px' }}>
-                        <NightingaleTrack
-                            id="variant-overview-track"
-                            data={variantTrackData}
-                            display-start={1}
-                            display-end={seqLength}
-                            length={seqLength}
-                            height={variantTrackHeight}
-                            layout="non-overlapping"
-                            margin-left={0}
-                            margin-right={5}
-                        />
+                    <div className={styles.trackContainer}>
+                        <div className={styles.trackLabel}>Variants Overview</div>
+                        <div className={styles.variantTrack} style={{ paddingLeft: labelWidth + 'px' }}>
+                            <NightingaleTrack
+                                id="variant-overview-track"
+                                data={variantTrackData}
+                                display-start={1}
+                                display-end={seqLength}
+                                length={seqLength}
+                                height={variantTrackHeight}
+                                layout="non-overlapping"
+                                margin-left={0}
+                                margin-right={5}
+                            />
+                        </div>
                     </div>
                 )}
 
                 <NightingaleManagerComponent reflected-attributes="display-start,display-end">
-                    <div style={{ paddingLeft: labelWidth.toString() + 'px' }}>
-                        <NightingaleNavigationComponent
-                            ruler-padding={0}
-                            margin-left={0}
-                            margin-right={5}
-                            height={40}
-                            length={seqLength}
-                            display-start={displayStart}
-                            display-end={displayEnd}
-                            onChange={(e) =>
-                                updateDisplayRange({
-                                    displayStart: e.detail['display-start'],
-                                    displayEnd: e.detail['display-end']
-                                })
-                            }
-                        />
+                    {/* Navigation */}
+                    <div className={styles.trackContainer}>
+                        <div className={styles.trackLabel}>Position Navigator</div>
+                        <div className={styles.navigationTrack} style={{ paddingLeft: labelWidth + 'px' }}>
+                            <NightingaleNavigationComponent
+                                ruler-padding={0}
+                                margin-left={0}
+                                margin-right={5}
+                                height={40}
+                                length={seqLength}
+                                display-start={displayStart}
+                                display-end={displayEnd}
+                                onChange={(e) =>
+                                    updateDisplayRange({
+                                        displayStart: e.detail['display-start'],
+                                        displayEnd: e.detail['display-end']
+                                    })
+                                }
+                            />
+                        </div>
                     </div>
 
-                    {/* Conservation track - shows sequence conservation as a line graph */}
+                    {/* Conservation track */}
                     {showConservation && conservationData.length > 0 && (
-                        <div style={{ paddingLeft: labelWidth.toString() + 'px' }}>
-                            <div style={{
-                                fontSize: '11px',
-                                color: '#666',
-                                marginBottom: '2px',
-                                paddingLeft: '2px'
-                            }}>
-                                Conservation (%)
+                        <div className={styles.trackContainer}>
+                            <div className={styles.trackLabel}>Conservation (%)</div>
+                            <div className={styles.conservationTrack} style={{ paddingLeft: labelWidth + 'px' }}>
+                                <NightingaleLinegraphTrack
+                                    data={conservationData}
+                                    display-start={displayStart}
+                                    display-end={displayEnd}
+                                    length={seqLength}
+                                    height={60}
+                                    margin-left={0}
+                                    margin-right={5}
+                                />
                             </div>
-                            <NightingaleLinegraphTrack
-                                data={conservationData}
-                                display-start={displayStart}
-                                display-end={displayEnd}
-                                length={seqLength}
-                                height={60}
-                                margin-left={0}
-                                margin-right={5}
-                            />
                         </div>
                     )}
 
-                    {/* Variant zoom track - only show if there are variants */}
+                    {/* Variant zoom track */}
                     {variantTrackData.length > 0 && (
-                        <div style={{ paddingLeft: labelWidth.toString() + 'px' }}>
-                            <NightingaleTrack
-                                id="variant-zoom-track"
-                                data={variantTrackData}
-                                display-start={displayStart}
-                                display-end={displayEnd}
-                                length={seqLength}
-                                margin-left={0}
-                                margin-right={5}
-                                height={variantTrackHeight}
-                                layout="non-overlapping"
-                            />
+                        <div className={styles.trackContainer}>
+                            <div className={styles.trackLabel}>Variants (Zoomed)</div>
+                            <div className={styles.variantTrack} style={{ paddingLeft: labelWidth + 'px' }}>
+                                <NightingaleTrack
+                                    id="variant-zoom-track"
+                                    data={variantTrackData}
+                                    display-start={displayStart}
+                                    display-end={displayEnd}
+                                    length={seqLength}
+                                    margin-left={0}
+                                    margin-right={5}
+                                    height={variantTrackHeight}
+                                    layout="non-overlapping"
+                                />
+                            </div>
                         </div>
                     )}
 
-                    {/* MSA container - simple for small alignments, virtualized for large */}
-                    {fullAlignmentData.length === 0 || seqLength === 0 ? (
-                        <div style={{ padding: '20px', color: '#666' }}>Loading alignment...</div>
-                    ) : fullAlignmentData.length <= MIN_VISIBLE_SEQUENCES ? (
-                        <NightingaleMSAComponent
-                            label-width={labelWidth}
-                            data={fullAlignmentData}
-                            features={alignmentFeatures}
-                            height={fullAlignmentData.length * SEQUENCE_HEIGHT}
-                            tile-height={TILE_HEIGHT}
-                            tile-width={TILE_WIDTH}
-                            margin-left={0}
-                            margin-right={5}
-                            display-start={displayStart}
-                            display-end={displayEnd}
-                            length={seqLength}
-                            colorScheme={alignmentColorScheme}
-                            overlay-conservation={showConservation}
-                            onChange={(e) =>
-                                updateDisplayRange({
-                                    displayStart: e.detail['display-start'],
-                                    displayEnd: e.detail['display-end']
-                                })
-                            }
-                        />
-                    ) : (
-                        <div
-                            ref={scrollContainerRef}
-                            onScroll={handleScroll}
-                            style={{
-                                height: `${Math.min(containerHeight - 100, totalHeight)}px`,
-                                maxHeight: '500px',
-                                overflow: 'auto',
-                                position: 'relative'
-                            }}
-                        >
-                            {/* Total height spacer for scrollbar */}
-                            <div style={{ height: `${totalHeight}px`, position: 'absolute', width: '1px' }} />
-
-                            {/* Positioned MSA content */}
-                            <div
-                                style={{
-                                    position: 'relative',
-                                    top: `${virtualOffset}px`,
-                                    willChange: 'transform'
-                                }}
-                            >
+                    {/* MSA container */}
+                    <div className={styles.trackContainer}>
+                        <div className={styles.trackLabel}>Sequence Alignment</div>
+                        <div className={styles.msaContainer}>
+                            {fullAlignmentData.length === 0 || seqLength === 0 ? (
+                                <div className={styles.loadingState}>
+                                    <i className="pi pi-spin pi-spinner" aria-hidden="true" />
+                                    <span>Loading alignment...</span>
+                                </div>
+                            ) : fullAlignmentData.length <= MIN_VISIBLE_SEQUENCES ? (
                                 <NightingaleMSAComponent
                                     label-width={labelWidth}
-                                    data={visibleData}
+                                    data={fullAlignmentData}
                                     features={alignmentFeatures}
-                                    height={visibleMsaHeight}
+                                    height={fullAlignmentData.length * SEQUENCE_HEIGHT}
                                     tile-height={TILE_HEIGHT}
                                     tile-width={TILE_WIDTH}
                                     margin-left={0}
@@ -713,9 +644,54 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                         })
                                     }
                                 />
-                            </div>
+                            ) : (
+                                <div
+                                    ref={scrollContainerRef}
+                                    onScroll={handleScroll}
+                                    className={styles.msaScrollContainer}
+                                    style={{
+                                        height: `${Math.min(containerHeight - 100, totalHeight)}px`,
+                                        maxHeight: '500px',
+                                        ['--label-width' as string]: `${labelWidth}px`
+                                    }}
+                                >
+                                    {/* Total height spacer for scrollbar */}
+                                    <div
+                                        className={styles.msaSpacer}
+                                        style={{ height: `${totalHeight}px` }}
+                                    />
+
+                                    {/* Positioned MSA content */}
+                                    <div
+                                        className={styles.msaContent}
+                                        style={{ top: `${virtualOffset}px` }}
+                                    >
+                                        <NightingaleMSAComponent
+                                            label-width={labelWidth}
+                                            data={visibleData}
+                                            features={alignmentFeatures}
+                                            height={visibleMsaHeight}
+                                            tile-height={TILE_HEIGHT}
+                                            tile-width={TILE_WIDTH}
+                                            margin-left={0}
+                                            margin-right={5}
+                                            display-start={displayStart}
+                                            display-end={displayEnd}
+                                            length={seqLength}
+                                            colorScheme={alignmentColorScheme}
+                                            overlay-conservation={showConservation}
+                                            onChange={(e) =>
+                                                updateDisplayRange({
+                                                    displayStart: e.detail['display-start'],
+                                                    displayEnd: e.detail['display-end']
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </NightingaleManagerComponent>
             </div>
         </div>
