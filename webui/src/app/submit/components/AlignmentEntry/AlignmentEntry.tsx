@@ -209,6 +209,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                     })),
                     variant_ids: alleles_info.map((a) => Array.from(a.variants.keys())).flat(),
                     alt_seq_name_suffix: alt_seq_name_suffix,
+                    species: gene_info.species.name,
                 });
             });
 

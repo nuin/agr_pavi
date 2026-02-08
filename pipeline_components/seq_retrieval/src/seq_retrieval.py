@@ -355,6 +355,12 @@ def write_output(
     required=False,
     help="""S3 URI prefix to upload output files to (e.g., s3://bucket/prefix/).""",
 )
+@click.option(
+    "--species",
+    type=click.STRING,
+    required=False,
+    help="""Species name to include in output sequence info.""",
+)
 @click.option("--debug", is_flag=True, help="""Flag to enable debug printing.""")
 def main(
     seq_id: str,
@@ -371,6 +377,7 @@ def main(
     reuse_local_cache: bool,
     unmasked: bool,
     s3_output_prefix: str,
+    species: Optional[str],
     debug: bool,
 ) -> None:
     """
@@ -436,7 +443,7 @@ def main(
     # Initiate output variables
     ref_seq: str | None = None
     alt_seq: str | None = None
-    ref_info: SeqInfo = SeqInfo()
+    ref_info: SeqInfo = SeqInfo(species=species)
     alt_info: SeqInfo | None = None
     error_msg: str
 
@@ -449,7 +456,7 @@ def main(
                 f"Failed to retrieve transcript sequence for TranslatedSeqRegion {fullRegion}: {e}"
             )
             error_msg = exception_description(e)
-            ref_info = SeqInfo(error=error_msg)
+            ref_info = SeqInfo(error=error_msg, species=species)
 
         if variant_info:
             # Generate additional sequence for full region with variants embedded
@@ -464,17 +471,17 @@ def main(
                     f"Failed to retrieve alternative transcript sequence for TranslatedSeqRegion {fullRegion} with variants ({variant_ids}): {e}"
                 )
                 error_msg = exception_description(e)
-                ref_info = SeqInfo(error=error_msg)
+                ref_info = SeqInfo(error=error_msg, species=species)
             else:
                 alt_seq = seq_info.sequence
-                alt_info = SeqInfo(embedded_variants=seq_info.embedded_variants)
+                alt_info = SeqInfo(embedded_variants=seq_info.embedded_variants, species=species)
 
     elif output_type == "protein":
         try:
             ref_seq = fullRegion.get_sequence(type="protein")
         except Exception as e:
             error_msg = exception_description(e)
-            ref_info = SeqInfo(error=error_msg)
+            ref_info = SeqInfo(error=error_msg, species=species)
 
         if variant_info:
             # Generate additional sequence for full region with variants embedded
@@ -487,10 +494,10 @@ def main(
                     f"Failed to retrieve alternative protein sequence for TranslatedSeqRegion {fullRegion} with variants ({variant_ids}): {e}"
                 )
                 error_msg = exception_description(e)
-                alt_info = SeqInfo(error=error_msg)
+                alt_info = SeqInfo(error=error_msg, species=species)
             else:
                 alt_seq = seq_info.sequence
-                alt_info = SeqInfo(embedded_variants=seq_info.embedded_variants)
+                alt_info = SeqInfo(embedded_variants=seq_info.embedded_variants, species=species)
 
             if alt_seq == "":
                 logger.error(

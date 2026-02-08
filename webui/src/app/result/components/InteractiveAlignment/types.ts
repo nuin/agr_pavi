@@ -4,7 +4,8 @@ export interface SeqInfoDict {
 
 export interface SeqInfo {
     embedded_variants?: EmbeddedVariant[],
-    error?: string
+    error?: string,
+    species?: string
 }
 
 export interface EmbeddedVariant {

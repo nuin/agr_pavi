@@ -23,7 +23,9 @@ export interface JobSumbissionPayloadRecord {
     }>,
     fasta_file_url: string,
     variant_ids: string[],
-    alt_seq_name_suffix?: string
+    alt_seq_name_suffix?: string,
+    /** Species name for display in alignment results */
+    species?: string
 }
 
 export type PayloadPart = JobSumbissionPayloadRecord[] | undefined

@@ -51,6 +51,7 @@ class Pipeline_seq_region(BaseModel):
     fasta_file_url: str
     variant_ids: list[str]
     alt_seq_name_suffix: Optional[str] = None
+    species: Optional[str] = None
 
 
 class Pipeline_job(BaseModel):

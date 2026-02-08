@@ -23,6 +23,8 @@ class SeqInfo:
     """The sequence as a string."""
     error: Optional[str]
     """An error message, if any occured during sequence retrieval."""
+    species: Optional[str]
+    """The species name for this sequence."""
 
     def __init__(
         self,
@@ -31,6 +33,7 @@ class SeqInfo:
             SeqEmbeddedVariantsList | AlignmentEmbeddedVariantsList
         ] = None,
         error: Optional[str] = None,
+        species: Optional[str] = None,
     ):
         if sequence is not None:
             self.sequence = sequence
@@ -41,6 +44,9 @@ class SeqInfo:
         if error is not None:
             self.error = error
 
+        if species is not None:
+            self.species = species
+
     @classmethod
     def from_dict(cls, seq_info_dict: dict[str, Any]) -> "SeqInfo":
         """Loads a SeqInfo object from a dictionary."""
@@ -49,6 +55,7 @@ class SeqInfo:
             SeqEmbeddedVariantsList | AlignmentEmbeddedVariantsList
         ] = None
         error: Optional[str] = None
+        species: Optional[str] = None
 
         if "sequence" in seq_info_dict:
             if not isinstance(seq_info_dict["sequence"], str):
@@ -78,8 +85,12 @@ class SeqInfo:
             if not isinstance(seq_info_dict["error"], str):
                 raise TypeError("error must be a string")
             error = seq_info_dict["error"]
+        if "species" in seq_info_dict:
+            if not isinstance(seq_info_dict["species"], str):
+                raise TypeError("species must be a string")
+            species = seq_info_dict["species"]
 
-        return cls(sequence=sequence, embedded_variants=embedded_variants, error=error)
+        return cls(sequence=sequence, embedded_variants=embedded_variants, error=error, species=species)
 
     @override
     def __repr__(self) -> str:

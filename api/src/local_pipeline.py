@@ -260,6 +260,7 @@ class LocalPipelineRunner:
         fasta_file_url = seq_region["fasta_file_url"]
         variant_ids = seq_region.get("variant_ids", [])
         alt_seq_name_suffix = seq_region.get("alt_seq_name_suffix", "_alt")
+        species = seq_region.get("species")
 
         # Build command - use seq_retrieval's venv Python which has required packages
         python_path = str(SEQ_RETRIEVAL_PYTHON)
@@ -281,6 +282,10 @@ class LocalPipelineRunner:
             "--alt_seq_name_suffix", alt_seq_name_suffix,
             "--reuse_local_cache",
         ]
+
+        # Add species if provided
+        if species:
+            cmd.extend(["--species", species])
 
         log.debug(f"Running seq_retrieval for {unique_entry_id}")
 

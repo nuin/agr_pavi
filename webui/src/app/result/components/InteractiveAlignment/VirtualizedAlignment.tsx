@@ -211,6 +211,25 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         return alleles;
     }, [props.seqInfoDict]);
 
+    // Extract species information for display
+    const speciesInfo = useMemo(() => {
+        const speciesCounts: Map<string, number> = new Map();
+
+        for (const seqInfo of Object.values(props.seqInfoDict)) {
+            if (seqInfo.species) {
+                speciesCounts.set(
+                    seqInfo.species,
+                    (speciesCounts.get(seqInfo.species) || 0) + 1
+                );
+            }
+        }
+
+        // Convert to array sorted by count (most sequences first)
+        return Array.from(speciesCounts.entries())
+            .map(([species, count]) => ({ species, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [props.seqInfoDict]);
+
     // Calculate conservation scores for each position
     const conservationData = useMemo<LineData[]>(() => {
         if (fullAlignmentData.length < 2 || seqLength === 0) return [];
@@ -448,6 +467,20 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             aria-label="Alignment viewer. Use arrow keys to pan, +/- to zoom, Home/End to jump to start/end"
             className={styles.alignmentContainer}
         >
+            {/* Species Legend */}
+            {speciesInfo.length > 0 && (
+                <div className={styles.speciesLegend}>
+                    <span className={styles.speciesLegendLabel}>Species:</span>
+                    {speciesInfo.map(({ species, count }) => (
+                        <span key={species} className={styles.speciesBadge}>
+                            <span className={styles.speciesColorDot} />
+                            {species}
+                            <span className={styles.speciesSequenceCount}>({count})</span>
+                        </span>
+                    ))}
+                </div>
+            )}
+
             {/* Variant Information Panel */}
             {alleleInfo.length > 0 && (
                 <div className={styles.variantPanel}>
