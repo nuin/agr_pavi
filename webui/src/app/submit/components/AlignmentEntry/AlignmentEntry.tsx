@@ -49,6 +49,32 @@ const alleleOptionFilterValue = (alleleInfo: AlleleInfo) => {
     return `${alleleText} | ${variantText}`;
 };
 
+/**
+ * Normalizes chromosome IDs to match FASTA file sequence IDs.
+ *
+ * Some species (e.g., Xenopus tropicalis) have FASTA files with zero-padded
+ * chromosome names (Chr01, Chr02, etc.) but Alliance API returns without
+ * zero-padding (Chr1, Chr2, etc.). This function normalizes the format.
+ *
+ * @param chromosome - Chromosome ID from Alliance API (e.g., "Chr5")
+ * @param taxonId - NCBI taxon ID for the species
+ * @returns Normalized chromosome ID matching FASTA file (e.g., "Chr05")
+ */
+const normalizeChromosomeId = (chromosome: string, taxonId: string): string => {
+    // Xenopus tropicalis (taxonId: NCBITaxon:8364) uses zero-padded chromosome names
+    // FASTA file: Chr01, Chr02, ..., Chr10
+    // Alliance API: Chr1, Chr2, ..., Chr10
+    if (taxonId === 'NCBITaxon:8364') {
+        const match = chromosome.match(/^Chr(\d+)$/);
+        if (match) {
+            const chrNum = parseInt(match[1], 10);
+            // Zero-pad to 2 digits for chromosomes 1-9
+            return `Chr${chrNum.toString().padStart(2, '0')}`;
+        }
+    }
+    return chromosome;
+};
+
 export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: AlignmentEntryProps) => {
     const [setupCompleted, setSetupCompleted] = useState<boolean>(false);
 
@@ -160,11 +186,17 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                 const transcriptStrand = transcript.strand === 1 ? '+' : '-';
                 const seqStrand = geneStrand || transcriptStrand;
 
+                // Normalize chromosome ID to match FASTA file format
+                const normalizedChromosome = normalizeChromosomeId(
+                    genomeLocation['chromosome'],
+                    gene_info.species.taxonId
+                );
+
                 portion.push({
                     unique_entry_id: unique_entry_id,
                     base_seq_name: `${gene_info.symbol}_${transcript.name}`,
                     fasta_file_url: transcriptSelection.fastaFileUrl!,
-                    seq_id: genomeLocation['chromosome'],
+                    seq_id: normalizedChromosome,
                     seq_strand: seqStrand,
                     exon_seq_regions: transcript.exons.map((e) => ({
                         start: e.refStart,
