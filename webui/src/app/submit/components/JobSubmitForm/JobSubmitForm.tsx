@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import React, { FunctionComponent, useCallback, useEffect, useReducer, useState } from 'react';
 import { submitNewPipelineJob } from './serverActions';
 
+import { useJobHistory } from '@/hooks/useJobHistory';
 import { AlignmentEntryList } from '../AlignmentEntryList/AlignmentEntryList';
 import { AlignmentEntryStatus } from '../AlignmentEntry/types';
 import { ExampleDataLoader, ExampleData, ExampleGene } from '../ExampleDataLoader/ExampleDataLoader';
@@ -19,6 +20,7 @@ interface JobSumbitProps {
 }
 export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbitProps) => {
     const router = useRouter()
+    const { addJob } = useJobHistory()
 
     console.info(`agrjBrowseDataRelease: ${props.agrjBrowseDataRelease}`)
 
@@ -188,6 +190,29 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
         () => {
             if( job['status'] === 'pending' ){
                 if(job['uuid']){
+                    // Extract gene names and transcript count for job history
+                    const genes: string[] = [];
+                    let transcriptCount = 0;
+                    inputPayloadParts.forEach((part) => {
+                        if (part.payloadPart) {
+                            part.payloadPart.forEach((record) => {
+                                if (record.base_seq_name && !genes.includes(record.base_seq_name)) {
+                                    genes.push(record.base_seq_name);
+                                }
+                                transcriptCount++;
+                            });
+                        }
+                    });
+
+                    // Save job to history
+                    addJob({
+                        uuid: job['uuid'],
+                        status: 'pending',
+                        genes,
+                        transcriptCount,
+                        title: genes.length > 0 ? genes.join(', ') : undefined,
+                    });
+
                     const params = new URLSearchParams();
                     params.set("uuid", job['uuid']);
                     router.push(`/progress?${params.toString()}`)
@@ -200,7 +225,7 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
                 setDisplayMsg(jobDisplayMsg())
             }
         },
-        [job, jobDisplayMsg, router]
+        [job, jobDisplayMsg, router, inputPayloadParts, addJob]
     );
 
     return (

@@ -10,6 +10,7 @@ import { fetchJobStatusFull } from './serverActions';
 import { ProgressStep } from './types';
 import styles from './JobProgressTracker.module.css';
 import { dataCache, CACHE_CONFIGS } from '@/utils/dataCache';
+import { useJobHistory } from '@/hooks/useJobHistory';
 import { fetchAlignmentResults, fetchAlignmentSeqInfo } from '@/app/result/components/AlignmentResultView/serverActions';
 
 interface LogEntry {
@@ -32,6 +33,7 @@ const INITIAL_STEPS: ProgressStep[] = [
 
 export const JobProgressTracker: FunctionComponent<JobProgressTrackerProps> = (props: JobProgressTrackerProps) => {
     const router = useRouter()
+    const { updateJob } = useJobHistory()
 
     const [steps, setSteps] = useState<ProgressStep[]>(INITIAL_STEPS.map(s => ({ ...s })))
     const [isPolling, setIsPolling] = useState<boolean>(true)
@@ -182,6 +184,21 @@ export const JobProgressTracker: FunctionComponent<JobProgressTrackerProps> = (p
         setLastStatus(response.status)
         updateStepsForStatus(response.status, response.stage, response.error_message)
 
+        // Update job history with current status
+        if (response.status === 'running') {
+            updateJob(props.uuidStr, { status: 'running' })
+        } else if (response.status === 'completed') {
+            updateJob(props.uuidStr, {
+                status: 'completed',
+                completedAt: new Date().toISOString()
+            })
+        } else if (response.status === 'failed') {
+            updateJob(props.uuidStr, {
+                status: 'failed',
+                error: response.error_message || 'Pipeline failed'
+            })
+        }
+
         if (response.status === 'completed') {
             stopPolling()
             setLogs(prev => [...prev, { timestamp: new Date(), level: 'info', message: 'Prefetching alignment results...' }])
@@ -222,7 +239,7 @@ export const JobProgressTracker: FunctionComponent<JobProgressTrackerProps> = (p
             stopPolling()
             setErrorMessage(response.error_message || 'Pipeline execution failed')
         }
-    }, [props.uuidStr, router, updateStepsForStatus, stopPolling])
+    }, [props.uuidStr, router, updateStepsForStatus, stopPolling, updateJob])
 
     // Auto-scroll logs to bottom when new entries are added
     useEffect(() => {
