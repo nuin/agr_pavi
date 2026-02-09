@@ -69,10 +69,52 @@
     margin-bottom: 1rem;
 }
 
+.headerButtons {
+    display: flex;
+    gap: 0.75rem;
+}
+
 .footer {
     display: flex;
     justify-content: center;
     padding: 1rem;
+}
+
+/* Dialog styles */
+.dialogContent {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.dialogDescription {
+    color: var(--agr-gray-600);
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inputGroup label {
+    font-weight: 600;
+    color: var(--agr-gray-700);
+    font-size: 0.875rem;
+}
+
+.errorText {
+    color: var(--agr-error);
+    font-size: 0.8125rem;
+}
+
+.dialogFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 /* Mobile adjustments */
@@ -92,7 +134,11 @@
         align-items: stretch;
     }
 
-    .header button {
+    .headerButtons {
+        flex-direction: column;
+    }
+
+    .headerButtons button {
         width: 100%;
     }
 }
