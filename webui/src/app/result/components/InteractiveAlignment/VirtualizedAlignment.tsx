@@ -30,9 +30,9 @@ import { SeqInfoDict } from './types';
 import styles from './VirtualizedAlignment.module.css';
 
 // Constants for virtualization and display
-const SEQUENCE_HEIGHT = 36; // Height per sequence in pixels (larger for readability)
-const TILE_HEIGHT = 32; // Height of each amino acid tile (default is 20)
-const TILE_WIDTH = 22; // Width of each amino acid tile (default is 20)
+const SEQUENCE_HEIGHT = 40; // Height per sequence in pixels (larger for readability)
+const TILE_HEIGHT = 36; // Height of each amino acid tile (default is 20)
+const TILE_WIDTH = 28; // Width of each amino acid tile (default is 20)
 const OVERSCAN = 10; // Number of extra sequences to render above/below viewport
 const MIN_VISIBLE_SEQUENCES = 30; // Minimum sequences to show at once
 
@@ -62,16 +62,69 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [showConservation, setShowConservation] = useState<boolean>(false);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
+    const [referenceIndex, setReferenceIndex] = useState<number>(0); // Index of sequence to show at top
 
-    // Parse alignment data once
-    const fullAlignmentData = useMemo<MSADataProp>(() => {
-        if (!props.alignmentResult) return [];
+    // Get species abbreviation (e.g., "Homo sapiens" -> "H. sapiens")
+    const getSpeciesAbbrev = (species: string): string => {
+        const parts = species.split(' ');
+        if (parts.length >= 2) {
+            return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+        }
+        return species;
+    };
+
+    // Parse alignment data and append species to names
+    // Also build a map from display name back to original ID for lookups
+    const { fullAlignmentData, displayNameToId } = useMemo<{
+        fullAlignmentData: MSADataProp;
+        displayNameToId: Map<string, string>;
+    }>(() => {
+        if (!props.alignmentResult) return { fullAlignmentData: [], displayNameToId: new Map() };
         const parsedAlignment = parse(props.alignmentResult);
-        return parsedAlignment['alns'].map((aln: { id: string; seq: string }) => ({
-            sequence: aln.seq,
-            name: aln.id
-        }));
-    }, [props.alignmentResult]);
+        const nameMap = new Map<string, string>();
+        const data = parsedAlignment['alns'].map((aln: { id: string; seq: string }) => {
+            // Look up species for this sequence
+            const seqInfo = props.seqInfoDict[aln.id];
+            const species = seqInfo?.species;
+            const displayName = species
+                ? `${aln.id} [${getSpeciesAbbrev(species)}]`
+                : aln.id;
+            nameMap.set(displayName, aln.id);
+            return {
+                sequence: aln.seq,
+                name: displayName
+            };
+        });
+        return { fullAlignmentData: data, displayNameToId: nameMap };
+    }, [props.alignmentResult, props.seqInfoDict]);
+
+    // Reorder alignment data to put reference sequence at top
+    const orderedAlignmentData = useMemo<MSADataProp>(() => {
+        if (fullAlignmentData.length === 0 || referenceIndex === 0) {
+            return fullAlignmentData;
+        }
+        // Move the reference sequence to the top
+        const reordered = [...fullAlignmentData];
+        const [refSeq] = reordered.splice(referenceIndex, 1);
+        reordered.unshift(refSeq);
+        return reordered;
+    }, [fullAlignmentData, referenceIndex]);
+
+    // Handler to promote a sequence to reference (top)
+    const promoteToReference = useCallback((index: number) => {
+        // The index is relative to orderedAlignmentData, need to find original index
+        if (index === 0) return; // Already at top
+
+        // Find the sequence name at this position in ordered data
+        const seqName = orderedAlignmentData[index]?.name;
+        if (!seqName) return;
+
+        // Find its original index in fullAlignmentData
+        const originalIndex = fullAlignmentData.findIndex(s => s.name === seqName);
+        if (originalIndex >= 0) {
+            setReferenceIndex(originalIndex);
+        }
+    }, [orderedAlignmentData, fullAlignmentData]);
 
     // Calculate sequence length
     const seqLength = useMemo(() => {
@@ -82,7 +135,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 
     // Calculate visible range based on scroll position
     const { visibleData, virtualOffset } = useMemo(() => {
-        const totalSequences = fullAlignmentData.length;
+        const totalSequences = orderedAlignmentData.length;
         const viewportSequences = Math.ceil(containerHeight / SEQUENCE_HEIGHT);
         const visibleCount = Math.max(MIN_VISIBLE_SEQUENCES, viewportSequences + OVERSCAN * 2);
 
@@ -93,7 +146,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         // Don't virtualize if we have fewer sequences than would fill the container
         if (totalSequences <= visibleCount) {
             return {
-                visibleData: fullAlignmentData,
+                visibleData: orderedAlignmentData,
                 virtualOffset: 0
             };
         }
@@ -102,10 +155,10 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         endIdx = Math.min(totalSequences, endIdx);
 
         return {
-            visibleData: fullAlignmentData.slice(startIdx, endIdx),
+            visibleData: orderedAlignmentData.slice(startIdx, endIdx),
             virtualOffset: startIdx * SEQUENCE_HEIGHT
         };
-    }, [fullAlignmentData, scrollTop, containerHeight]);
+    }, [orderedAlignmentData, scrollTop, containerHeight]);
 
     // Update alignment features for visible sequences only
     const { alignmentFeatures, variantTrackData, variantTrackHeight } = useMemo(() => {
@@ -114,12 +167,14 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         const positionalFeatureCount: Map<number, number> = new Map([]);
 
         for (let i = 0; i < visibleData.length; i++) {
-            const alignment_seq_name = visibleData[i].name;
+            const displayName = visibleData[i].name;
+            // Look up original ID from display name
+            const originalId = displayNameToId.get(displayName) || displayName;
             if (
-                alignment_seq_name in props.seqInfoDict &&
-                'embedded_variants' in props.seqInfoDict[alignment_seq_name]
+                originalId in props.seqInfoDict &&
+                'embedded_variants' in props.seqInfoDict[originalId]
             ) {
-                for (const embedded_variant of props.seqInfoDict[alignment_seq_name][
+                for (const embedded_variant of props.seqInfoDict[originalId][
                     'embedded_variants'
                 ] || []) {
                     // Add variant to positional feature count
@@ -140,7 +195,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                             from: i,
                             to: i
                         },
-                        id: `feature_${alignment_seq_name}_${embedded_variant.variant_id}`,
+                        id: `feature_${originalId}_${embedded_variant.variant_id}`,
                         borderColor: '#f59e0b',
                         fillColor: 'rgba(245, 158, 11, 0.3)',
                         mouseOverBorderColor: '#d97706',
@@ -173,7 +228,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             variantTrackData: trackData,
             variantTrackHeight: height
         };
-    }, [visibleData, props.seqInfoDict]);
+    }, [visibleData, props.seqInfoDict, displayNameToId]);
 
     // Calculate label width based on max name length
     const labelWidth = useMemo(() => {
@@ -209,25 +264,6 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return alleles;
-    }, [props.seqInfoDict]);
-
-    // Extract species information for display
-    const speciesInfo = useMemo(() => {
-        const speciesCounts: Map<string, number> = new Map();
-
-        for (const seqInfo of Object.values(props.seqInfoDict)) {
-            if (seqInfo.species) {
-                speciesCounts.set(
-                    seqInfo.species,
-                    (speciesCounts.get(seqInfo.species) || 0) + 1
-                );
-            }
-        }
-
-        // Convert to array sorted by count (most sequences first)
-        return Array.from(speciesCounts.entries())
-            .map(([species, count]) => ({ species, count }))
-            .sort((a, b) => b.count - a.count);
     }, [props.seqInfoDict]);
 
     // Calculate conservation scores for each position
@@ -446,7 +482,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     }, [seqLength]);
 
     // Total height for scroll container
-    const totalHeight = fullAlignmentData.length * SEQUENCE_HEIGHT;
+    const totalHeight = orderedAlignmentData.length * SEQUENCE_HEIGHT;
 
     // Height of visible MSA component
     const visibleMsaHeight = visibleData.length * SEQUENCE_HEIGHT;
@@ -467,20 +503,6 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             aria-label="Alignment viewer. Use arrow keys to pan, +/- to zoom, Home/End to jump to start/end"
             className={styles.alignmentContainer}
         >
-            {/* Species Legend */}
-            {speciesInfo.length > 0 && (
-                <div className={styles.speciesLegend}>
-                    <span className={styles.speciesLegendLabel}>Species:</span>
-                    {speciesInfo.map(({ species, count }) => (
-                        <span key={species} className={styles.speciesBadge}>
-                            <span className={styles.speciesColorDot} />
-                            {species}
-                            <span className={styles.speciesSequenceCount}>({count})</span>
-                        </span>
-                    ))}
-                </div>
-            )}
-
             {/* Variant Information Panel */}
             {alleleInfo.length > 0 && (
                 <div className={styles.variantPanel}>
@@ -646,21 +668,37 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         </div>
                     )}
 
+                    {/* Sequence selector for reordering */}
+                    {orderedAlignmentData.length > 1 && (
+                        <div className={styles.sequenceSelector}>
+                            {orderedAlignmentData.map((seq, idx) => (
+                                <button
+                                    key={seq.name}
+                                    className={`${styles.sequenceChip} ${idx === 0 ? styles.isReference : ''}`}
+                                    onClick={() => promoteToReference(idx)}
+                                    title={idx === 0 ? 'Reference sequence (at top)' : 'Click to move to top'}
+                                >
+                                    {seq.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {/* MSA container */}
                     <div className={styles.trackContainer}>
                         <div className={styles.trackLabel}>Sequence Alignment</div>
                         <div className={styles.msaContainer}>
-                            {fullAlignmentData.length === 0 || seqLength === 0 ? (
+                            {orderedAlignmentData.length === 0 || seqLength === 0 ? (
                                 <div className={styles.loadingState}>
                                     <i className="pi pi-spin pi-spinner" aria-hidden="true" />
                                     <span>Loading alignment...</span>
                                 </div>
-                            ) : fullAlignmentData.length <= MIN_VISIBLE_SEQUENCES ? (
+                            ) : orderedAlignmentData.length <= MIN_VISIBLE_SEQUENCES ? (
                                 <NightingaleMSAComponent
                                     label-width={labelWidth}
-                                    data={fullAlignmentData}
+                                    data={orderedAlignmentData}
                                     features={alignmentFeatures}
-                                    height={fullAlignmentData.length * SEQUENCE_HEIGHT}
+                                    height={orderedAlignmentData.length * SEQUENCE_HEIGHT}
                                     tile-height={TILE_HEIGHT}
                                     tile-width={TILE_WIDTH}
                                     margin-left={0}

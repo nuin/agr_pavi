@@ -177,12 +177,131 @@
     min-width: 36px;
 }
 
+/* Section Label */
+.sectionLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--agr-gray-600);
+}
+
+/* Species Section */
+.speciesSection {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(90deg, var(--agr-info-light) 0%, transparent 100%);
+    border-radius: var(--agr-radius-sm);
+    margin-bottom: 1rem;
+}
+
+.speciesTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+/* Conservation Details */
+.conservationDetails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--agr-gray-50);
+    border-radius: var(--agr-radius-sm);
+    margin-bottom: 1rem;
+}
+
+.conservationItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.conservationItem i {
+    color: var(--agr-primary-500);
+    font-size: 0.875rem;
+}
+
+.conservationLabel {
+    font-size: 0.8125rem;
+    color: var(--agr-gray-600);
+}
+
+.conservationValue {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--agr-gray-800);
+}
+
+.conservationPercent {
+    font-weight: 400;
+    color: var(--agr-gray-500);
+    margin-left: 0.25rem;
+}
+
+/* Pairwise Identity Section */
+.pairwiseSection {
+    padding: 0.75rem 1rem;
+    background: var(--agr-gray-50);
+    border-radius: var(--agr-radius-sm);
+    margin-bottom: 1rem;
+}
+
+.pairwiseGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.pairwiseItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    background: white;
+    border: 1px solid var(--agr-gray-200);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+}
+
+.pairwiseNames {
+    color: var(--agr-gray-700);
+}
+
+.pairwiseValue {
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+}
+
+.pairwiseValue.highIdentity {
+    background: var(--agr-success-light);
+    color: var(--agr-success-dark);
+}
+
+.pairwiseValue.medIdentity {
+    background: var(--agr-warning-light);
+    color: var(--agr-warning-dark);
+}
+
+.pairwiseValue.lowIdentity {
+    background: var(--agr-gray-100);
+    color: var(--agr-gray-700);
+}
+
 /* Job Details */
 .detailsSection {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
     font-size: 0.875rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--agr-gray-200);
 }
 
 .detailItem {
@@ -230,6 +349,19 @@
 
     .qualitySection {
         flex-direction: column;
+    }
+
+    .conservationDetails {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .pairwiseGrid {
+        flex-direction: column;
+    }
+
+    .pairwiseItem {
+        justify-content: space-between;
     }
 
     .detailsSection {

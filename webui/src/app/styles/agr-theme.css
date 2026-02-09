@@ -132,7 +132,7 @@
   --agr-header-height: 60px;
 
   /* Container */
-  --agr-container-max-width: 1200px;
+  --agr-container-max-width: 1600px;
 }
 
 /* Base Styles */
@@ -493,7 +493,7 @@ a:hover {
 
 /* Card Body and Footer */
 .agr-card-body {
-  padding: var(--agr-spacing-md) 0;
+  padding: var(--agr-spacing-sm) 0;
 }
 
 .agr-card-header h2 {
@@ -880,6 +880,8 @@ a:hover {
 /* Alignment viewer container */
 .agr-alignment-viewer {
   min-height: 300px;
+  width: 100%;
+  overflow-x: auto;
 }
 
 /* Warning card styling */

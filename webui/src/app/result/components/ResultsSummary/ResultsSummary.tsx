@@ -9,6 +9,18 @@ import { parse } from 'clustal-js';
 import { SeqInfoDict } from '../InteractiveAlignment/types';
 import styles from './ResultsSummary.module.css';
 
+export interface PairwiseIdentity {
+    seq1: string;
+    seq2: string;
+    identity: number;
+}
+
+export interface ConservedBlock {
+    start: number;
+    end: number;
+    length: number;
+}
+
 export interface AlignmentStats {
     sequenceCount: number;
     alignmentLength: number;
@@ -16,6 +28,10 @@ export interface AlignmentStats {
     gapPercentage: number;
     variantsCount: number;
     failuresCount: number;
+    conservedPositions: number;
+    pairwiseIdentities: PairwiseIdentity[];
+    longestConservedBlock: ConservedBlock | null;
+    speciesList: string[];
 }
 
 export interface ResultsSummaryProps {
@@ -49,36 +65,45 @@ export function ResultsSummary({
                 gapPercentage: 0,
                 variantsCount: 0,
                 failuresCount: 0,
+                conservedPositions: 0,
+                pairwiseIdentities: [],
+                longestConservedBlock: null,
+                speciesList: [],
             };
         }
 
         // Parse CLUSTAL alignment to get sequences
-        let sequences: string[] = [];
+        let sequences: Array<{ name: string; seq: string }> = [];
         try {
             const parsedAlignment = parse(alignmentResult);
-            sequences = parsedAlignment['alns'].map((aln: { id: string; seq: string }) => aln.seq);
+            sequences = parsedAlignment['alns'].map((aln: { id: string; seq: string }) => ({
+                name: aln.id,
+                seq: aln.seq
+            }));
         } catch {
             // Fallback: try FASTA format
             const lines = alignmentResult.split('\n');
+            let currentName = '';
             let currentSeq = '';
             for (const line of lines) {
                 if (line.startsWith('>')) {
-                    if (currentSeq) sequences.push(currentSeq);
+                    if (currentSeq) sequences.push({ name: currentName, seq: currentSeq });
+                    currentName = line.slice(1).trim();
                     currentSeq = '';
                 } else {
                     currentSeq += line.trim();
                 }
             }
-            if (currentSeq) sequences.push(currentSeq);
+            if (currentSeq) sequences.push({ name: currentName, seq: currentSeq });
         }
 
         const sequenceCount = sequences.length;
-        const alignmentLength = sequences.length > 0 ? sequences[0].length : 0;
+        const alignmentLength = sequences.length > 0 ? sequences[0].seq.length : 0;
 
         // Calculate gap percentage
         let totalGaps = 0;
         let totalChars = 0;
-        for (const seq of sequences) {
+        for (const { seq } of sequences) {
             for (const char of seq) {
                 totalChars++;
                 if (char === '-') {
@@ -88,17 +113,22 @@ export function ResultsSummary({
         }
         const gapPercentage = totalChars > 0 ? (totalGaps / totalChars) * 100 : 0;
 
-        // Calculate conservation score (positions with same residue across all sequences)
+        // Calculate conservation and find conserved positions
         let conservedPositions = 0;
+        const isConserved: boolean[] = [];
         if (alignmentLength > 0 && sequenceCount > 1) {
             for (let i = 0; i < alignmentLength; i++) {
                 const residuesAtPosition = new Set<string>();
-                for (const seq of sequences) {
+                let hasNonGap = false;
+                for (const { seq } of sequences) {
                     if (i < seq.length && seq[i] !== '-') {
                         residuesAtPosition.add(seq[i].toUpperCase());
+                        hasNonGap = true;
                     }
                 }
-                if (residuesAtPosition.size === 1) {
+                const posConserved = hasNonGap && residuesAtPosition.size === 1;
+                isConserved.push(posConserved);
+                if (posConserved) {
                     conservedPositions++;
                 }
             }
@@ -106,6 +136,69 @@ export function ResultsSummary({
         const conservationScore = alignmentLength > 0
             ? (conservedPositions / alignmentLength) * 100
             : 0;
+
+        // Find longest conserved block
+        let longestConservedBlock: ConservedBlock | null = null;
+        let currentBlockStart = -1;
+        let currentBlockLength = 0;
+        for (let i = 0; i <= isConserved.length; i++) {
+            if (i < isConserved.length && isConserved[i]) {
+                if (currentBlockStart === -1) {
+                    currentBlockStart = i;
+                }
+                currentBlockLength++;
+            } else {
+                if (currentBlockLength > 0) {
+                    if (!longestConservedBlock || currentBlockLength > longestConservedBlock.length) {
+                        longestConservedBlock = {
+                            start: currentBlockStart + 1, // 1-based
+                            end: currentBlockStart + currentBlockLength,
+                            length: currentBlockLength,
+                        };
+                    }
+                }
+                currentBlockStart = -1;
+                currentBlockLength = 0;
+            }
+        }
+
+        // Calculate pairwise identities
+        const pairwiseIdentities: PairwiseIdentity[] = [];
+        for (let i = 0; i < sequences.length; i++) {
+            for (let j = i + 1; j < sequences.length; j++) {
+                let matches = 0;
+                let compared = 0;
+                const seq1 = sequences[i].seq;
+                const seq2 = sequences[j].seq;
+                for (let k = 0; k < alignmentLength; k++) {
+                    const c1 = seq1[k]?.toUpperCase();
+                    const c2 = seq2[k]?.toUpperCase();
+                    // Only compare non-gap positions
+                    if (c1 && c2 && c1 !== '-' && c2 !== '-') {
+                        compared++;
+                        if (c1 === c2) {
+                            matches++;
+                        }
+                    }
+                }
+                const identity = compared > 0 ? (matches / compared) * 100 : 0;
+                // Get short names for display
+                const name1 = sequences[i].name.split('_')[0] || sequences[i].name.slice(0, 10);
+                const name2 = sequences[j].name.split('_')[0] || sequences[j].name.slice(0, 10);
+                pairwiseIdentities.push({ seq1: name1, seq2: name2, identity });
+            }
+        }
+
+        // Extract species list from seqInfoDict
+        const speciesSet = new Set<string>();
+        if (seqInfoDict) {
+            for (const seqInfo of Object.values(seqInfoDict)) {
+                if (seqInfo.species) {
+                    speciesSet.add(seqInfo.species);
+                }
+            }
+        }
+        const speciesList = Array.from(speciesSet);
 
         // Count variants and failures from seqInfoDict
         let variantsCount = 0;
@@ -129,6 +222,10 @@ export function ResultsSummary({
             gapPercentage,
             variantsCount,
             failuresCount,
+            conservedPositions,
+            pairwiseIdentities,
+            longestConservedBlock,
+            speciesList,
         };
     }, [alignmentResult, seqInfoDict]);
 
@@ -285,6 +382,68 @@ export function ResultsSummary({
                                 className="tooltip-target"
                                 data-pr-tooltip="Percentage of gap characters in alignment"
                             />
+                        </div>
+                    </div>
+                )}
+
+                {/* Species List */}
+                {stats.speciesList.length > 0 && (
+                    <div className={styles.speciesSection}>
+                        <span className={styles.sectionLabel}>Species:</span>
+                        <div className={styles.speciesTags}>
+                            {stats.speciesList.map((species) => (
+                                <Tag key={species} value={species} severity="info" />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Conserved Positions & Longest Block */}
+                {stats.alignmentLength > 0 && (
+                    <div className={styles.conservationDetails}>
+                        <div className={styles.conservationItem}>
+                            <i className="pi pi-check-square" />
+                            <span className={styles.conservationLabel}>Identical Positions:</span>
+                            <span className={styles.conservationValue}>
+                                {stats.conservedPositions} of {stats.alignmentLength}
+                                <span className={styles.conservationPercent}>
+                                    ({stats.conservationScore.toFixed(1)}%)
+                                </span>
+                            </span>
+                        </div>
+                        {stats.longestConservedBlock && (
+                            <div className={styles.conservationItem}>
+                                <i className="pi pi-arrows-h" />
+                                <span className={styles.conservationLabel}>Longest Conserved Block:</span>
+                                <span className={styles.conservationValue}>
+                                    {stats.longestConservedBlock.length} aa
+                                    <span className={styles.conservationPercent}>
+                                        (positions {stats.longestConservedBlock.start}-{stats.longestConservedBlock.end})
+                                    </span>
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Pairwise Identity */}
+                {stats.pairwiseIdentities.length > 0 && (
+                    <div className={styles.pairwiseSection}>
+                        <span className={styles.sectionLabel}>Pairwise Identity:</span>
+                        <div className={styles.pairwiseGrid}>
+                            {stats.pairwiseIdentities.map((pair, idx) => (
+                                <div key={idx} className={styles.pairwiseItem}>
+                                    <span className={styles.pairwiseNames}>
+                                        {pair.seq1} vs {pair.seq2}
+                                    </span>
+                                    <span className={`${styles.pairwiseValue} ${
+                                        pair.identity >= 70 ? styles.highIdentity :
+                                        pair.identity >= 50 ? styles.medIdentity : styles.lowIdentity
+                                    }`}>
+                                        {pair.identity.toFixed(1)}%
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

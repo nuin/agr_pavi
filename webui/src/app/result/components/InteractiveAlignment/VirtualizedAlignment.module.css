@@ -27,8 +27,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1.25rem;
-  padding: 1rem 1.25rem;
+  gap: 1rem;
+  padding: 0.75rem 0.75rem;
   background: linear-gradient(180deg, #f8f9fb 0%, #f3f4f6 100%);
   border-bottom: 1px solid var(--agr-gray-200);
 }
@@ -209,11 +209,11 @@
    Variant Information Panel
    ============================================ */
 .variantPanel {
-  margin: 1rem 1.25rem;
-  padding: 1rem;
+  margin: 0.5rem 0.5rem;
+  padding: 0.75rem;
   background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
   border: 1px solid #fde047;
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 1px 3px rgba(250, 204, 21, 0.15);
 }
 
@@ -346,7 +346,7 @@
    Alignment View Container
    ============================================ */
 .alignmentViewWrapper {
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.5rem 0.5rem 0.75rem;
 }
 
 /* Track containers */
@@ -362,6 +362,63 @@
   color: var(--agr-gray-500);
   margin-bottom: 0.25rem;
   padding-left: 0.125rem;
+}
+
+.trackHint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--agr-gray-400);
+  font-style: italic;
+}
+
+/* Sequence selector for reordering */
+.sequenceSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: var(--agr-gray-100);
+  border: 1px solid var(--agr-gray-200);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.sequenceChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  background: white;
+  border: 1px solid var(--agr-gray-300);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sequenceChip:hover {
+  background: var(--agr-primary-100);
+  border-color: var(--agr-primary-400);
+}
+
+.sequenceChip.isReference {
+  background: var(--agr-primary-500);
+  color: white;
+  border-color: var(--agr-primary-600);
+  font-weight: 600;
+}
+
+.sequenceChip.isReference::before {
+  content: '★ ';
+}
+
+.sequenceChip:not(.isReference):hover::before {
+  content: '↑ ';
+  color: var(--agr-primary-500);
 }
 
 /* Navigation track styling */
