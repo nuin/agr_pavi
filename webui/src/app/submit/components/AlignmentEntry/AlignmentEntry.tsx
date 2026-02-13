@@ -59,29 +59,11 @@ const alleleOptionFilterValue = (alleleInfo: AlleleInfo) => {
  * @param taxonId - NCBI taxon ID for the species
  * @returns Normalized chromosome ID matching FASTA file format
  */
-const normalizeChromosomeId = (chromosome: string, taxonId: string): string => {
-    // Xenopus tropicalis (taxonId: NCBITaxon:8364) uses zero-padded chromosome names
-    // FASTA file: Chr01, Chr02, ..., Chr10
-    // Alliance API: Chr1, Chr2, ..., Chr10
-    if (taxonId === 'NCBITaxon:8364') {
-        const match = chromosome.match(/^Chr(\d+)$/);
-        if (match) {
-            const chrNum = parseInt(match[1], 10);
-            // Zero-pad to 2 digits for chromosomes 1-9
-            return `Chr${chrNum.toString().padStart(2, '0')}`;
-        }
-    }
-
-    // Xenopus laevis (taxonId: NCBITaxon:8355) uses lowercase chromosome names
-    // FASTA file: chr1L, chr2S, chr6L, chr9_10S, etc.
-    // Alliance API: Chr1L, Chr2S, Chr6L, Chr9_10S, etc.
-    if (taxonId === 'NCBITaxon:8355') {
-        // Convert "Chr" prefix to lowercase "chr"
-        if (chromosome.startsWith('Chr')) {
-            return 'chr' + chromosome.slice(3);
-        }
-    }
-
+const normalizeChromosomeId = (chromosome: string, _taxonId: string): string => {
+    // As of Alliance 8.3.0, Xenopus assemblies were updated to v10.0/v10.1:
+    // - X. tropicalis: JBrowse and FASTA both use Chr1, Chr2, etc.
+    // - X. laevis: JBrowse and FASTA both use Chr1L, Chr2L, etc.
+    // No normalization needed for current species.
     return chromosome;
 };
 

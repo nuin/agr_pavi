@@ -180,6 +180,31 @@ curl http://localhost:3000/health
    ```
    **Solution:** Verify variant ID exists in Alliance database
 
+4. **Species sequences appear truncated or incorrect:**
+
+   **Symptom:** Protein sequences for certain species (e.g., Xenopus) appear as very short fragments (15-25 amino acids instead of expected 400+ aa) or contain premature stop codons.
+
+   **Root Cause:** Assembly version mismatch between JBrowse track coordinates and FASTA genome files. This occurs when:
+   - Alliance updates JBrowse tracks to use coordinates from a newer genome assembly
+   - But the FASTA URL in the cached constants still points to an older assembly
+
+   **Diagnostic Steps:**
+   ```bash
+   # Check what FASTA URL is being used
+   grep "jBrowsefastaurl" webui/next.lock/data/https_raw.githubusercontent.com/alliance-genome_agr_ui_main_src_constants_*.js | grep -i xenopus
+
+   # Compare with current Alliance constants
+   curl -s https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/constants.js | grep -A2 "Xenopus"
+
+   # Check JBrowse2 config for FASTA URL
+   curl -s https://www.alliancegenome.org/jbrowse2/config.json | grep -o '"fastaLocation"[^}]*}' | grep -i xen
+   ```
+
+   **Solution:** Update the cached constants files in `webui/next.lock/data/` with the correct FASTA URLs from upstream Alliance, then update the integrity hashes in `webui/next.lock/lock.json`.
+
+   **Historical Examples:**
+   - Feb 2026: Xenopus assemblies updated from v9.1/v9.2 to v10.0/v10.1
+
 ### Alignment Failures
 
 **Symptom:** Job fails at `ALIGNMENT` stage.
