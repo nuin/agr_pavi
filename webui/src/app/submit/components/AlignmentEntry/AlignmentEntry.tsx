@@ -52,13 +52,12 @@ const alleleOptionFilterValue = (alleleInfo: AlleleInfo) => {
 /**
  * Normalizes chromosome IDs to match FASTA file sequence IDs.
  *
- * Some species (e.g., Xenopus tropicalis) have FASTA files with zero-padded
- * chromosome names (Chr01, Chr02, etc.) but Alliance API returns without
- * zero-padding (Chr1, Chr2, etc.). This function normalizes the format.
+ * Different species have different chromosome naming conventions in their FASTA files
+ * that may not match what the Alliance API returns. This function normalizes the format.
  *
- * @param chromosome - Chromosome ID from Alliance API (e.g., "Chr5")
+ * @param chromosome - Chromosome ID from Alliance API (e.g., "Chr5", "Chr6L")
  * @param taxonId - NCBI taxon ID for the species
- * @returns Normalized chromosome ID matching FASTA file (e.g., "Chr05")
+ * @returns Normalized chromosome ID matching FASTA file format
  */
 const normalizeChromosomeId = (chromosome: string, taxonId: string): string => {
     // Xenopus tropicalis (taxonId: NCBITaxon:8364) uses zero-padded chromosome names
@@ -72,6 +71,17 @@ const normalizeChromosomeId = (chromosome: string, taxonId: string): string => {
             return `Chr${chrNum.toString().padStart(2, '0')}`;
         }
     }
+
+    // Xenopus laevis (taxonId: NCBITaxon:8355) uses lowercase chromosome names
+    // FASTA file: chr1L, chr2S, chr6L, chr9_10S, etc.
+    // Alliance API: Chr1L, Chr2S, Chr6L, Chr9_10S, etc.
+    if (taxonId === 'NCBITaxon:8355') {
+        // Convert "Chr" prefix to lowercase "chr"
+        if (chromosome.startsWith('Chr')) {
+            return 'chr' + chromosome.slice(3);
+        }
+    }
+
     return chromosome;
 };
 
