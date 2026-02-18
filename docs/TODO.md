@@ -144,15 +144,22 @@
 
 ### Medium Priority Features
 
-4. **Protein domain overlay** (3-5 days)
+4. **Auto-include orthologs from related species** (3-5 days)
+   - When selecting a gene, offer to automatically add orthologs
+   - Use Alliance orthology API to find related genes across species
+   - Pre-populate alignment entries for orthologous genes
+   - Example: selecting human SHH could auto-add mouse Shh, frog shh, etc.
+   - **User value**: High - simplifies cross-species comparison workflow
+
+5. **Protein domain overlay** (3-5 days)
    - UniProt API integration
    - Nightingale domain track
 
-5. **Exon boundary display** (3-4 days)
+6. **Exon boundary display** (3-4 days)
    - Coordinate mapping from Alliance API
    - Visual track in alignment
 
-6. **Enhanced variant filtering** (5-7 days)
+7. **Enhanced variant filtering** (5-7 days)
    - Filter by consequence type
    - Filter by clinical significance
 
@@ -221,6 +228,7 @@ These are documented but not yet prioritized:
 - [ ] KANBAN-514 (Nucleotide alignments) - Not started
 - [ ] Alliance integration - Not started
 - [ ] KANBAN-532 (Variant effects) - Not started
+- [ ] Auto-include orthologs - Not started (added Feb 2026)
 - [ ] Protein domains - Not started
 - [ ] Exon boundaries - Not started
 - [ ] Enhanced filtering - Not started
@@ -258,6 +266,13 @@ These are documented but not yet prioritized:
 - Created comprehensive technical roadmap
 - Both KANBAN-727 and KANBAN-691 ready to implement (no blockers)
 - Good test coverage from KANBAN-816 work
+
+### Recent Fixes (Feb 2026)
+- **Fixed Xenopus sequence retrieval**: Updated cached Alliance constants to use
+  new genome assemblies (v10.0/v10.1) matching JBrowse 8.3.0 track coordinates.
+  Previously sequences appeared truncated (15-25 aa) due to assembly mismatch.
+- **Job history persistence**: Added localStorage-based job tracking in My Jobs page
+- **Add by UUID**: Users can now import jobs by UUID into their job history
 
 ### Known Blockers
 - Alliance integration requires coordination with Alliance team (external dependency)
@@ -305,5 +320,5 @@ At end of each week:
 
 ---
 
-**Last Updated**: Dec 31, 2025
-**Next Review**: End of Week 8 (Jan 4, 2025)
+**Last Updated**: Feb 17, 2026
+**Next Review**: End of current sprint

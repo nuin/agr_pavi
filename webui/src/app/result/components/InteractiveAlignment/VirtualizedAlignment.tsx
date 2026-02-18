@@ -17,9 +17,8 @@ import NightingaleMSAComponent, {
 } from './nightingale/MSA';
 import NightingaleManagerComponent from './nightingale/Manager';
 import NightingaleNavigationComponent from './nightingale/Navigation';
-import NightingaleTrack, {
-    dataPropType as TrackDataProp,
-    FeatureShapes
+import {
+    dataPropType as TrackDataProp
 } from './nightingale/Track';
 import NightingaleLinegraphTrack, { LineData } from './nightingale/LinegraphTrack';
 
@@ -160,11 +159,30 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         };
     }, [orderedAlignmentData, scrollTop, containerHeight]);
 
-    // Update alignment features for visible sequences only
-    const { alignmentFeatures, variantTrackData, variantTrackHeight } = useMemo(() => {
-        const features: MSAFeaturesProp = [];
+    // Get ALL variants for the overview bar (not just visible sequences)
+    const allVariantsTrackData = useMemo(() => {
         const trackData: TrackDataProp = [];
-        const positionalFeatureCount: Map<number, number> = new Map([]);
+
+        for (const [_seqId, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const variant of seqInfo.embedded_variants) {
+                    trackData.push({
+                        accession: variant.variant_id,
+                        start: variant.alignment_start_pos,
+                        end: variant.alignment_end_pos,
+                        color: '#ef4444',
+                        shape: variant.seq_substitution_type === 'deletion' ? 'triangle' :
+                               variant.seq_substitution_type === 'insertion' ? 'chevron' : 'diamond'
+                    });
+                }
+            }
+        }
+        return trackData;
+    }, [props.seqInfoDict]);
+
+    // Update alignment features for visible sequences only
+    const alignmentFeatures = useMemo(() => {
+        const features: MSAFeaturesProp = [];
 
         for (let i = 0; i < visibleData.length; i++) {
             const displayName = visibleData[i].name;
@@ -177,14 +195,6 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 for (const embedded_variant of props.seqInfoDict[originalId][
                     'embedded_variants'
                 ] || []) {
-                    // Add variant to positional feature count
-                    for (
-                        let j = embedded_variant.alignment_start_pos;
-                        j <= embedded_variant.alignment_end_pos;
-                        j++
-                    ) {
-                        positionalFeatureCount.set(j, (positionalFeatureCount.get(j) || 0) + 1);
-                    }
                     // Add variant to alignment features (relative to visible window)
                     features.push({
                         residues: {
@@ -196,38 +206,16 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                             to: i
                         },
                         id: `feature_${originalId}_${embedded_variant.variant_id}`,
-                        borderColor: '#f59e0b',
-                        fillColor: 'rgba(245, 158, 11, 0.3)',
-                        mouseOverBorderColor: '#d97706',
-                        mouseOverFillColor: 'rgba(217, 119, 6, 0.4)'
-                    });
-
-                    // Add variant to variant track
-                    let variantShape: FeatureShapes = 'diamond';
-                    if (embedded_variant.seq_substitution_type === 'deletion') {
-                        variantShape = 'triangle';
-                    }
-                    if (embedded_variant.seq_substitution_type === 'insertion') {
-                        variantShape = 'chevron';
-                    }
-                    trackData.push({
-                        accession: embedded_variant.variant_id,
-                        start: embedded_variant.alignment_start_pos,
-                        end: embedded_variant.alignment_end_pos,
-                        color: '#f59e0b',
-                        shape: variantShape
+                        borderColor: '#ef4444',
+                        fillColor: 'rgba(239, 68, 68, 0.3)',
+                        mouseOverBorderColor: '#dc2626',
+                        mouseOverFillColor: 'rgba(220, 38, 38, 0.4)'
                     });
                 }
             }
         }
 
-        const height = Math.max(...positionalFeatureCount.values()) * 15 || 15;
-
-        return {
-            alignmentFeatures: features,
-            variantTrackData: trackData,
-            variantTrackHeight: height
-        };
+        return features;
     }, [visibleData, props.seqInfoDict, displayNameToId]);
 
     // Calculate label width based on max name length
@@ -587,28 +575,39 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 
             {/* Alignment View */}
             <div className={styles.alignmentViewWrapper}>
-                {/* Variant overview track */}
-                {variantTrackData.length > 0 && (
-                    <div className={styles.trackContainer}>
-                        <div className={styles.trackLabel}>Variants Overview</div>
-                        <div className={styles.variantTrack} style={{ paddingLeft: labelWidth + 'px' }}>
-                            <NightingaleTrack
-                                id="variant-overview-track"
-                                data={variantTrackData}
-                                display-start={1}
-                                display-end={seqLength}
-                                length={seqLength}
-                                height={variantTrackHeight}
-                                layout="non-overlapping"
-                                margin-left={0}
-                                margin-right={5}
-                            />
+                {/* Variant position indicator - shows ALL variant locations on the sequence */}
+                {allVariantsTrackData.length > 0 && (
+                    <div className={styles.variantPositionBar}>
+                        <div className={styles.variantPositionLabel}>
+                            <i className="pi pi-bolt" />
+                            <span>Variants:</span>
                         </div>
+                        {allVariantsTrackData.map((variant, idx) => {
+                            const start = variant.start ?? 1;
+                            return (
+                                <button
+                                    key={idx}
+                                    className={styles.variantButton}
+                                    onClick={() => {
+                                        // Jump to variant position
+                                        const windowSize = Math.max(20, displayEnd - displayStart);
+                                        const newStart = Math.max(1, start - Math.floor(windowSize / 2));
+                                        const newEnd = Math.min(seqLength, newStart + windowSize);
+                                        setDisplayStart(newStart);
+                                        setDisplayEnd(newEnd);
+                                    }}
+                                    title={`Click to jump to ${variant.accession}`}
+                                >
+                                    <span className={styles.variantButtonId}>{variant.accession}</span>
+                                    <span className={styles.variantButtonPos}>pos {start}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 
                 <NightingaleManagerComponent reflected-attributes="display-start,display-end">
-                    {/* Navigation */}
+                    {/* Navigation with variant markers */}
                     <div className={styles.trackContainer}>
                         <div className={styles.trackLabel}>Position Navigator</div>
                         <div className={styles.navigationTrack} style={{ paddingLeft: labelWidth + 'px' }}>
@@ -648,26 +647,6 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         </div>
                     )}
 
-                    {/* Variant zoom track */}
-                    {variantTrackData.length > 0 && (
-                        <div className={styles.trackContainer}>
-                            <div className={styles.trackLabel}>Variants (Zoomed)</div>
-                            <div className={styles.variantTrack} style={{ paddingLeft: labelWidth + 'px' }}>
-                                <NightingaleTrack
-                                    id="variant-zoom-track"
-                                    data={variantTrackData}
-                                    display-start={displayStart}
-                                    display-end={displayEnd}
-                                    length={seqLength}
-                                    margin-left={0}
-                                    margin-right={5}
-                                    height={variantTrackHeight}
-                                    layout="non-overlapping"
-                                />
-                            </div>
-                        </div>
-                    )}
-
                     {/* Sequence selector for reordering */}
                     {orderedAlignmentData.length > 1 && (
                         <div className={styles.sequenceSelector}>
@@ -681,6 +660,37 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                     {seq.name}
                                 </button>
                             ))}
+                        </div>
+                    )}
+
+                    {/* Variant position indicator row - shows exactly where variants are in current view */}
+                    {allVariantsTrackData.length > 0 && (
+                        <div className={styles.trackContainer}>
+                            <div className={styles.trackLabel}>Variant Position</div>
+                            <div className={styles.variantIndicatorRow} style={{ marginLeft: labelWidth + 'px' }}>
+                                {allVariantsTrackData.map((variant, idx) => {
+                                    const pos = variant.start ?? 1;
+                                    if (pos < displayStart || pos > displayEnd) {
+                                        return (
+                                            <div key={idx} className={styles.variantOutOfView}>
+                                                ← {variant.accession} at pos {pos}
+                                            </div>
+                                        );
+                                    }
+                                    const viewWidth = displayEnd - displayStart + 1;
+                                    const leftPercent = ((pos - displayStart + 0.5) / viewWidth) * 100;
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className={styles.variantIndicator}
+                                            style={{ left: `${leftPercent}%` }}
+                                        >
+                                            <div className={styles.variantIndicatorLine} />
+                                            <div className={styles.variantIndicatorLabel}>▼ {variant.accession}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
 

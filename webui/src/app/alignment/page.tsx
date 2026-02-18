@@ -14,8 +14,8 @@ import { Button } from 'primereact/button';
 
 // Dynamic imports for all Nightingale components (require DOM/HTMLElement)
 const NightingaleMSAComponent = dynamic(
-    () => import('../result/components/InteractiveAlignment/nightingale/MSA').then(mod => ({ default: mod.default })),
-    { ssr: false }
+    () => import('../result/components/InteractiveAlignment/nightingale/MSA'),
+    { ssr: false, loading: () => <div style={{ padding: '1rem' }}>Loading alignment viewer...</div> }
 );
 
 const NightingaleManagerComponent = dynamic(
@@ -25,12 +25,12 @@ const NightingaleManagerComponent = dynamic(
 
 const NightingaleNavigationComponent = dynamic(
     () => import('../result/components/InteractiveAlignment/nightingale/Navigation'),
-    { ssr: false }
+    { ssr: false, loading: () => <div style={{ height: '40px' }} /> }
 );
 
 const NightingaleLinegraphTrack = dynamic(
     () => import('../result/components/InteractiveAlignment/nightingale/LinegraphTrack'),
-    { ssr: false }
+    { ssr: false, loading: () => <div style={{ height: '60px' }} /> }
 );
 
 // Tile sizes for fullscreen view
@@ -395,65 +395,88 @@ function FullscreenAlignmentContent() {
             </div>
 
             {/* Alignment content */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0.5rem 1rem' }}>
-                <NightingaleManagerComponent reflected-attributes="display-start,display-end">
-                    {/* Navigation ruler */}
-                    <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
-                        <NightingaleNavigationComponent
-                            ruler-padding={0}
-                            margin-left={0}
-                            margin-right={5}
-                            height={40}
-                            length={seqLength}
-                            display-start={displayStart}
-                            display-end={displayEnd}
-                            onChange={(e) =>
-                                updateDisplayRange({
-                                    displayStart: e.detail['display-start'],
-                                    displayEnd: e.detail['display-end']
-                                })
-                            }
-                        />
-                    </div>
-
-                    {/* Conservation graph */}
-                    {showConservation && conservationData.length > 0 && (
+            <div style={{
+                flex: 1,
+                overflow: 'auto',
+                padding: '0.5rem 1rem'
+            }}>
+                {seqLength > 0 && fullAlignmentData.length > 0 ? (
+                    <NightingaleManagerComponent
+                        reflected-attributes="display-start,display-end"
+                        style={{ display: 'block', width: '100%', minWidth: '600px' }}
+                    >
+                        {/* Navigation ruler */}
                         <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
-                            <NightingaleLinegraphTrack
-                                data={conservationData}
+                            <NightingaleNavigationComponent
+                                ruler-padding={0}
+                                margin-left={0}
+                                margin-right={5}
+                                height={40}
+                                length={seqLength}
+                                display-start={displayStart}
+                                display-end={displayEnd}
+                                onChange={(e) =>
+                                    updateDisplayRange({
+                                        displayStart: e.detail['display-start'],
+                                        displayEnd: e.detail['display-end']
+                                    })
+                                }
+                            />
+                        </div>
+
+                        {/* Conservation graph */}
+                        {showConservation && conservationData.length > 0 && (
+                            <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
+                                <NightingaleLinegraphTrack
+                                    data={conservationData}
+                                    display-start={displayStart}
+                                    display-end={displayEnd}
+                                    length={seqLength}
+                                    height={60}
+                                    margin-left={0}
+                                    margin-right={5}
+                                />
+                            </div>
+                        )}
+
+                        {/* MSA alignment */}
+                        <div style={{ width: '100%' }}>
+                            <NightingaleMSAComponent
+                                key={`msa-${fullAlignmentData.length}-${seqLength}`}
+                                label-width={labelWidth}
+                                data={fullAlignmentData}
+                                features={alignmentFeatures}
+                                height={msaHeight}
+                                tile-height={TILE_HEIGHT}
+                                tile-width={TILE_WIDTH}
+                                margin-left={0}
+                                margin-right={5}
                                 display-start={displayStart}
                                 display-end={displayEnd}
                                 length={seqLength}
-                                height={60}
-                                margin-left={0}
-                                margin-right={5}
+                                colorScheme={alignmentColorScheme}
+                                overlay-conservation={showConservation}
+                                onChange={(e) =>
+                                    updateDisplayRange({
+                                        displayStart: e.detail['display-start'],
+                                        displayEnd: e.detail['display-end']
+                                    })
+                                }
                             />
                         </div>
-                    )}
-
-                    {/* MSA alignment */}
-                    <NightingaleMSAComponent
-                        label-width={labelWidth}
-                        data={fullAlignmentData}
-                        features={alignmentFeatures}
-                        height={msaHeight}
-                        tile-height={TILE_HEIGHT}
-                        tile-width={TILE_WIDTH}
-                        margin-left={0}
-                        margin-right={5}
-                        display-start={displayStart}
-                        display-end={displayEnd}
-                        length={seqLength}
-                        colorScheme={alignmentColorScheme}
-                        overlay-conservation={showConservation}
-                        onChange={(e) =>
-                            updateDisplayRange({
-                                displayStart: e.detail['display-start'],
-                                displayEnd: e.detail['display-end']
-                            })
-                        }
-                    />
-                </NightingaleManagerComponent>
+                    </NightingaleManagerComponent>
+                ) : (
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '200px',
+                        color: '#666'
+                    }}>
+                        <i className="pi pi-spin pi-spinner" style={{ marginRight: '0.5rem' }} />
+                        Loading alignment data...
+                    </div>
+                )}
             </div>
         </div>
     );
