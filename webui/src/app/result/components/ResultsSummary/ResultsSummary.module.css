@@ -323,6 +323,15 @@
     border-radius: 3px;
 }
 
+.jobId {
+    font-size: 0.75rem;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
+}
+
 /* Loading State */
 .loading {
     display: flex;

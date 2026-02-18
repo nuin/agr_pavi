@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
@@ -453,7 +453,17 @@ export function ResultsSummary({
                     <div className={styles.detailItem}>
                         <i className="pi pi-tag" />
                         <span>Job ID:</span>
-                        <code>{jobId.slice(0, 8)}...</code>
+                        <code className={styles.jobId} title={jobId}>{jobId}</code>
+                        <Button
+                            icon="pi pi-copy"
+                            className="p-button-text p-button-sm p-button-secondary"
+                            onClick={() => {
+                                navigator.clipboard.writeText(jobId);
+                            }}
+                            tooltip="Copy Job ID"
+                            tooltipOptions={{ position: 'top' }}
+                            style={{ marginLeft: '0.25rem', padding: '0.25rem' }}
+                        />
                     </div>
                     {completedAt && (
                         <div className={styles.detailItem}>
