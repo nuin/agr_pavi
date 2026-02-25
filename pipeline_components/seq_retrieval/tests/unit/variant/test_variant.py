@@ -15,6 +15,7 @@ logger = get_logger(name=__name__)
 set_log_level(logging.DEBUG)
 
 
+@responses.activate
 def test_variant_from_id_initiation(wb_variant_yn10: Variant) -> None:
     """
     Test Variant class initiation from variant ID.
@@ -244,6 +245,106 @@ def test_variant_comparison(wb_variant_yn32, wb_variant_yn30) -> None:
     )
     assert wb_variant_yn32 == variant
     assert wb_variant_yn32 != wb_variant_yn30
+
+
+def test_affects_protein_sequence() -> None:
+    """
+    Test Variant.affects_protein_sequence() method.
+    """
+    # Variant with no molecular consequences (conservative: affects protein)
+    variant_no_consequences = Variant(
+        variant_id="test_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+    )
+    assert variant_no_consequences.affects_protein_sequence() is True
+
+    # UTR variant (does not affect protein)
+    variant_utr = Variant(
+        variant_id="test_utr_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["3_prime_UTR_variant"],
+    )
+    assert variant_utr.affects_protein_sequence() is False
+
+    # 5' UTR variant (does not affect protein)
+    variant_5utr = Variant(
+        variant_id="test_5utr_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["5_prime_UTR_variant"],
+    )
+    assert variant_5utr.affects_protein_sequence() is False
+
+    # Intron variant (does not affect protein)
+    variant_intron = Variant(
+        variant_id="test_intron_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["intron_variant"],
+    )
+    assert variant_intron.affects_protein_sequence() is False
+
+    # Missense variant (affects protein)
+    variant_missense = Variant(
+        variant_id="test_missense_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["missense_variant"],
+    )
+    assert variant_missense.affects_protein_sequence() is True
+
+    # Frameshift variant (affects protein)
+    variant_frameshift = Variant(
+        variant_id="test_frameshift_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["frameshift_variant"],
+    )
+    assert variant_frameshift.affects_protein_sequence() is True
+
+    # Mixed consequences with coding effect (affects protein)
+    variant_mixed_coding = Variant(
+        variant_id="test_mixed_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["intron_variant", "splice_donor_variant"],
+    )
+    assert variant_mixed_coding.affects_protein_sequence() is True
+
+    # Multiple non-coding consequences (does not affect protein)
+    variant_all_noncoding = Variant(
+        variant_id="test_noncoding_variant",
+        seq_id="X",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["intron_variant", "upstream_gene_variant"],
+    )
+    assert variant_all_noncoding.affects_protein_sequence() is False
 
 
 def test_variant_overlaps(

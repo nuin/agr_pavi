@@ -55,6 +55,23 @@ class Variant:
     seq_substitution_type: SeqSubstitutionType
     """Sequence substitution type of the variant when replacing the reference sequence with the alternative sequence"""
 
+    molecular_consequences: List[str]
+    """List of molecular consequence terms from the Alliance API (e.g., '3_prime_UTR_variant', 'missense_variant')"""
+
+    # Consequence terms that do NOT affect protein sequence
+    NON_CODING_CONSEQUENCES = frozenset([
+        "3_prime_UTR_variant",
+        "5_prime_UTR_variant",
+        "intron_variant",
+        "upstream_gene_variant",
+        "downstream_gene_variant",
+        "intergenic_variant",
+        "non_coding_transcript_variant",
+        "non_coding_transcript_exon_variant",
+        "mature_miRNA_variant",
+        "NMD_transcript_variant",
+    ])
+
     def __init__(
         self,
         variant_id: str,
@@ -63,6 +80,7 @@ class Variant:
         end: int,
         genomic_ref_seq: Optional[str] = None,
         genomic_alt_seq: Optional[str] = None,
+        molecular_consequences: Optional[List[str]] = None,
     ):
         """
         Initializes a Variant instance.
@@ -72,7 +90,9 @@ class Variant:
             seq_id: ID of the sequence region.
             start: Start position of the variant (<= end).
             end: End position of the variant (>= start).
-            strand: Strand of the sequence region (e.g., '+' or '-').
+            genomic_ref_seq: Reference sequence at the variant position.
+            genomic_alt_seq: Alternative sequence at the variant position.
+            molecular_consequences: List of SO terms describing the variant's molecular consequences.
         """
         # Ensure start <= end
         if start > end:
@@ -115,6 +135,34 @@ class Variant:
         self.genomic_ref_seq = genomic_ref_seq or ""
         self.genomic_alt_seq = genomic_alt_seq or ""
         self.seq_substitution_type = substitution_type
+        self.molecular_consequences = molecular_consequences or []
+
+    def affects_protein_sequence(self) -> bool:
+        """
+        Checks if this variant affects the protein sequence.
+
+        Returns True if the variant has coding consequences (missense, frameshift, etc.)
+        or if no molecular consequences are known (conservative default).
+        Returns False if all consequences are non-coding (UTR, intron, intergenic, etc.).
+
+        Returns:
+            True if the variant affects protein sequence, False otherwise.
+        """
+        # If no consequences are known, assume it might affect protein (conservative)
+        if not self.molecular_consequences:
+            return True
+
+        # Check if ALL consequences are non-coding
+        # If any consequence is coding (not in NON_CODING_CONSEQUENCES), return True
+        for consequence in self.molecular_consequences:
+            if consequence not in self.NON_CODING_CONSEQUENCES:
+                return True
+
+        # All consequences are non-coding
+        logger.debug(
+            f"Variant {self.variant_id} has only non-coding consequences: {self.molecular_consequences}"
+        )
+        return False
 
     @classmethod
     def from_dict(cls, variant_dict: dict[str, Any]) -> "Variant":
@@ -146,6 +194,10 @@ class Variant:
         if "genomic_alt_seq" in variant_dict:
             genomic_alt_seq = variant_dict["genomic_alt_seq"]
 
+        molecular_consequences = None
+        if "molecular_consequences" in variant_dict:
+            molecular_consequences = variant_dict["molecular_consequences"]
+
         return cls(
             variant_id=variant_dict["variant_id"],
             seq_id=variant_dict["genomic_seq_id"],
@@ -153,6 +205,7 @@ class Variant:
             end=variant_dict["genomic_end_pos"],
             genomic_ref_seq=genomic_ref_seq,
             genomic_alt_seq=genomic_alt_seq,
+            molecular_consequences=molecular_consequences,
         )
 
     @override
@@ -165,6 +218,7 @@ class Variant:
                 and self.genomic_end_pos == other.genomic_end_pos
                 and self.genomic_ref_seq == other.genomic_ref_seq
                 and self.genomic_alt_seq == other.genomic_alt_seq
+                and self.molecular_consequences == other.molecular_consequences
             ):
                 return True
         return False
@@ -198,6 +252,15 @@ class Variant:
         response.raise_for_status()
         variant_data = response.json()
 
+        # Extract molecular consequences from transcriptLevelConsequence array
+        molecular_consequences: List[str] = []
+        transcript_consequences = variant_data.get("transcriptLevelConsequence", [])
+        for consequence in transcript_consequences:
+            if "molecularConsequences" in consequence:
+                for mc in consequence["molecularConsequences"]:
+                    if mc not in molecular_consequences:
+                        molecular_consequences.append(mc)
+
         return cls(
             variant_id=variant_id,
             seq_id=variant_data["location"]["chromosome"],
@@ -205,6 +268,7 @@ class Variant:
             end=variant_data["location"]["end"],
             genomic_ref_seq=variant_data.get("genomicReferenceSequence"),
             genomic_alt_seq=variant_data.get("genomicVariantSequence"),
+            molecular_consequences=molecular_consequences,
         )
 
     def overlaps(self, other: "Variant|SeqRegion") -> bool:

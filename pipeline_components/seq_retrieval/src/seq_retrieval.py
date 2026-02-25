@@ -484,10 +484,23 @@ def main(
             ref_info = SeqInfo(error=error_msg, species=species)
 
         if variant_info:
-            # Generate additional sequence for full region with variants embedded
+            # Filter out non-coding variants (UTR, intron, etc.) for protein output
+            coding_variants = [
+                v for v in variant_info.values() if v.affects_protein_sequence()
+            ]
+            non_coding_variants = [
+                v for v in variant_info.values() if not v.affects_protein_sequence()
+            ]
+            if non_coding_variants:
+                logger.info(
+                    f"Filtered out {len(non_coding_variants)} non-coding variant(s) for protein output: "
+                    f"{[v.variant_id for v in non_coding_variants]}"
+                )
+
+            # Generate additional sequence for full region with coding variants embedded
             try:
                 seq_info = fullRegion.get_alt_sequence(
-                    type="protein", variants=list(variant_info.values())
+                    type="protein", variants=coding_variants
                 )
             except Exception as e:
                 logger.error(
