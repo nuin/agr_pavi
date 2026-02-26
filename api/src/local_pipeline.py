@@ -479,10 +479,23 @@ class LocalPipelineRunner:
             # Update embedded_variants if present
             if "embedded_variants" in info and info["embedded_variants"]:
                 for variant in info["embedded_variants"]:
-                    if "protein_start" in variant:
-                        orig_pos = variant["protein_start"]
-                        if orig_pos in pos_map:
-                            variant["alignment_position"] = pos_map[orig_pos]
+                    # Map seq_start_pos to alignment position
+                    if "seq_start_pos" in variant:
+                        orig_start = variant["seq_start_pos"]
+                        if orig_start in pos_map:
+                            variant["alignment_start_pos"] = pos_map[orig_start]
+                        else:
+                            # Fallback: use seq position directly if not in map
+                            variant["alignment_start_pos"] = orig_start
+
+                    # Map seq_end_pos to alignment position
+                    if "seq_end_pos" in variant:
+                        orig_end = variant["seq_end_pos"]
+                        if orig_end in pos_map:
+                            variant["alignment_end_pos"] = pos_map[orig_end]
+                        else:
+                            # Fallback: use seq position directly if not in map
+                            variant["alignment_end_pos"] = orig_end
 
         return seq_info
 
