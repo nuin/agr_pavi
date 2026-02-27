@@ -12,10 +12,10 @@ import type { LineData } from '../result/components/InteractiveAlignment/nightin
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 
-// Dynamic imports for all Nightingale components (require DOM/HTMLElement)
+// Dynamic imports for Nightingale web components (require client-side rendering)
 const NightingaleMSAComponent = dynamic(
     () => import('../result/components/InteractiveAlignment/nightingale/MSA'),
-    { ssr: false, loading: () => <div style={{ padding: '1rem' }}>Loading alignment viewer...</div> }
+    { ssr: false }
 );
 
 const NightingaleManagerComponent = dynamic(
@@ -25,17 +25,18 @@ const NightingaleManagerComponent = dynamic(
 
 const NightingaleNavigationComponent = dynamic(
     () => import('../result/components/InteractiveAlignment/nightingale/Navigation'),
-    { ssr: false, loading: () => <div style={{ height: '40px' }} /> }
+    { ssr: false }
 );
 
 const NightingaleLinegraphTrack = dynamic(
     () => import('../result/components/InteractiveAlignment/nightingale/LinegraphTrack'),
-    { ssr: false, loading: () => <div style={{ height: '60px' }} /> }
+    { ssr: false }
 );
 
-// Tile sizes for fullscreen view
-const TILE_HEIGHT = 30;
-const TILE_WIDTH = 20;
+// Tile sizes for fullscreen view - larger for readability
+const TILE_HEIGHT = 36;
+const TILE_WIDTH = 28;
+const SEQUENCE_HEIGHT = 40;
 
 interface ColorSchemeOption {
     label: string;
@@ -65,7 +66,7 @@ function FullscreenAlignmentContent() {
     const [alignmentColorScheme, setAlignmentColorScheme] = useState<string>('clustal2');
     const [showConservation, setShowConservation] = useState<boolean>(false);
     const [displayStart, setDisplayStart] = useState<number>(1);
-    const [displayEnd, setDisplayEnd] = useState<number>(100);
+    const [displayEnd, setDisplayEnd] = useState<number>(50);
 
     // Fetch data
     useEffect(() => {
@@ -153,12 +154,12 @@ function FullscreenAlignmentContent() {
         return features;
     }, [fullAlignmentData, seqInfoDict]);
 
-    // Calculate label width
+    // Calculate label width (capped at reasonable max)
     const labelWidth = useMemo(() => {
         const maxLabelLength = fullAlignmentData.reduce((maxLength, alignment) => {
             return Math.max(maxLength, alignment.name.length);
         }, 0);
-        return maxLabelLength * 9;
+        return Math.min(maxLabelLength * 9, 300);
     }, [fullAlignmentData]);
 
     // Conservation data for line graph
@@ -203,11 +204,11 @@ function FullscreenAlignmentContent() {
         if (args.displayEnd !== undefined) setDisplayEnd(args.displayEnd);
     }, []);
 
-    // Initialize display range
+    // Initialize display range - show fewer positions for larger tiles
     useEffect(() => {
         if (seqLength === 0) return;
         const initDisplayCenter = Math.round(seqLength / 2);
-        const halfWindow = 50;
+        const halfWindow = 25; // Show ~50 positions for readable tiles
         setDisplayStart(seqLength <= halfWindow * 2 ? 1 : initDisplayCenter - halfWindow);
         setDisplayEnd(seqLength <= halfWindow * 2 ? seqLength : initDisplayCenter + halfWindow);
     }, [seqLength]);
@@ -325,7 +326,7 @@ function FullscreenAlignmentContent() {
         );
     }
 
-    const msaHeight = Math.max(200, fullAlignmentData.length * 32);
+    const msaHeight = Math.max(200, fullAlignmentData.length * SEQUENCE_HEIGHT);
 
     return (
         <div
@@ -403,7 +404,6 @@ function FullscreenAlignmentContent() {
                 {seqLength > 0 && fullAlignmentData.length > 0 ? (
                     <NightingaleManagerComponent
                         reflected-attributes="display-start,display-end"
-                        style={{ display: 'block', width: '100%', minWidth: '600px' }}
                     >
                         {/* Navigation ruler */}
                         <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
@@ -440,30 +440,27 @@ function FullscreenAlignmentContent() {
                         )}
 
                         {/* MSA alignment */}
-                        <div style={{ width: '100%' }}>
-                            <NightingaleMSAComponent
-                                key={`msa-${fullAlignmentData.length}-${seqLength}`}
-                                label-width={labelWidth}
-                                data={fullAlignmentData}
-                                features={alignmentFeatures}
-                                height={msaHeight}
-                                tile-height={TILE_HEIGHT}
-                                tile-width={TILE_WIDTH}
-                                margin-left={0}
-                                margin-right={5}
-                                display-start={displayStart}
-                                display-end={displayEnd}
-                                length={seqLength}
-                                colorScheme={alignmentColorScheme}
-                                overlay-conservation={showConservation}
-                                onChange={(e) =>
-                                    updateDisplayRange({
-                                        displayStart: e.detail['display-start'],
-                                        displayEnd: e.detail['display-end']
-                                    })
-                                }
-                            />
-                        </div>
+                        <NightingaleMSAComponent
+                            label-width={labelWidth}
+                            data={fullAlignmentData}
+                            features={alignmentFeatures}
+                            height={msaHeight}
+                            tile-height={TILE_HEIGHT}
+                            tile-width={TILE_WIDTH}
+                            margin-left={0}
+                            margin-right={5}
+                            display-start={displayStart}
+                            display-end={displayEnd}
+                            length={seqLength}
+                            colorScheme={alignmentColorScheme}
+                            overlay-conservation={showConservation}
+                            onChange={(e) =>
+                                updateDisplayRange({
+                                    displayStart: e.detail['display-start'],
+                                    displayEnd: e.detail['display-end']
+                                })
+                            }
+                        />
                     </NightingaleManagerComponent>
                 ) : (
                     <div style={{
