@@ -2,6 +2,18 @@
 
 This directory contains documentation for the PAVI (Proteins Annotations and Variants Inspector) project.
 
+## Complete Development Guides
+
+Start here for comprehensive, end-to-end documentation:
+
+| Guide | Description |
+|-------|-------------|
+| [Deployment Guide](deployment-complete-guide.md) | All deployment modes: local dev, EC2, AWS cloud, CI/CD |
+| [Backend Development](backend-development-guide.md) | API, pipeline, testing, code quality |
+| [Frontend Development](frontend-development-guide.md) | WebUI, Nightingale, mock API, testing |
+
+---
+
 ## Documentation Index
 
 ### Quick Start
