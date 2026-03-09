@@ -12,6 +12,8 @@ import type { LineData } from '../result/components/InteractiveAlignment/nightin
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 
+import styles from '../result/components/InteractiveAlignment/VirtualizedAlignment.module.css';
+
 // Dynamic imports for Nightingale web components (require client-side rendering)
 const NightingaleMSAComponent = dynamic(
     () => import('../result/components/InteractiveAlignment/nightingale/MSA'),
@@ -143,10 +145,10 @@ function FullscreenAlignmentContent() {
                         },
                         sequences: { from: i, to: i },
                         id: `feature_${alignment_seq_name}_${embedded_variant.variant_id}`,
-                        borderColor: 'black',
-                        fillColor: 'black',
-                        mouseOverBorderColor: 'black',
-                        mouseOverFillColor: 'transparent'
+                        borderColor: '#ef4444',
+                        fillColor: 'rgba(239, 68, 68, 0.3)',
+                        mouseOverBorderColor: '#dc2626',
+                        mouseOverFillColor: 'rgba(220, 38, 38, 0.4)'
                     });
                 }
             }
@@ -161,6 +163,67 @@ function FullscreenAlignmentContent() {
         }, 0);
         return Math.min(maxLabelLength * 9, 300);
     }, [fullAlignmentData]);
+
+    // Get ALL variants for the overview bar
+    const allVariantsTrackData = useMemo(() => {
+        const trackData: Array<{
+            accession: string;
+            start: number;
+            end: number;
+            color: string;
+            type: string;
+        }> = [];
+
+        for (const [_seqId, seqInfo] of Object.entries(seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const variant of seqInfo.embedded_variants) {
+                    trackData.push({
+                        accession: variant.variant_id,
+                        start: variant.alignment_start_pos,
+                        end: variant.alignment_end_pos,
+                        color: '#ef4444',
+                        type: variant.seq_substitution_type
+                    });
+                }
+            }
+        }
+        return trackData;
+    }, [seqInfoDict]);
+
+    // Extract allele information for display
+    const alleleInfo = useMemo(() => {
+        const alleles: Array<{
+            seqName: string;
+            variantId: string;
+            refSeq: string;
+            altSeq: string;
+            position: string;
+            type: string;
+        }> = [];
+
+        for (const [seqName, seqInfo] of Object.entries(seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const variant of seqInfo.embedded_variants) {
+                    alleles.push({
+                        seqName,
+                        variantId: variant.variant_id,
+                        refSeq: variant.genomic_ref_seq || '-',
+                        altSeq: variant.genomic_alt_seq || '-',
+                        position: `${variant.genomic_seq_id}:${variant.genomic_start_pos}-${variant.genomic_end_pos}`,
+                        type: variant.seq_substitution_type
+                    });
+                }
+            }
+        }
+        return alleles;
+    }, [seqInfoDict]);
+
+    // Get variant type class
+    const getVariantTypeClass = (type: string): string => {
+        if (type === 'deletion') return styles.deletion;
+        if (type === 'insertion') return styles.insertion;
+        return styles.substitution;
+    };
 
     // Conservation data for line graph
     const conservationData = useMemo<LineData[]>(() => {
@@ -395,6 +458,37 @@ function FullscreenAlignmentContent() {
                 </div>
             </div>
 
+            {/* Variant Information Panel */}
+            {alleleInfo.length > 0 && (
+                <div className={styles.variantPanel}>
+                    <div className={styles.variantPanelHeader}>
+                        <div className={styles.variantIcon}>
+                            <i className="pi pi-bolt" aria-hidden="true" />
+                        </div>
+                        <span className={styles.variantTitle}>Variant Information</span>
+                        <span className={styles.variantCount}>
+                            {alleleInfo.length} variant{alleleInfo.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                    <div className={styles.variantGrid}>
+                        {alleleInfo.map((allele, idx) => (
+                            <div key={idx} className={styles.variantCard}>
+                                <div className={styles.variantId}>{allele.variantId}</div>
+                                <div className={styles.variantDetails}>
+                                    <span className={styles.variantChange}>
+                                        {allele.refSeq} → {allele.altSeq}
+                                    </span>
+                                    <span className={`${styles.variantTypeBadge} ${getVariantTypeClass(allele.type)}`}>
+                                        {allele.type}
+                                    </span>
+                                </div>
+                                <div className={styles.variantPosition}>{allele.position}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Alignment content */}
             <div style={{
                 flex: 1,
@@ -405,6 +499,37 @@ function FullscreenAlignmentContent() {
                     <NightingaleManagerComponent
                         reflected-attributes="display-start,display-end"
                     >
+                        {/* Variant position bar - clickable buttons to jump to variants */}
+                        {allVariantsTrackData.length > 0 && (
+                            <div className={styles.variantPositionBar}>
+                                <div className={styles.variantPositionLabel}>
+                                    <i className="pi pi-bolt" />
+                                    <span>Variants:</span>
+                                </div>
+                                {allVariantsTrackData.map((variant, idx) => {
+                                    const start = variant.start ?? 1;
+                                    return (
+                                        <button
+                                            key={idx}
+                                            className={styles.variantButton}
+                                            onClick={() => {
+                                                // Jump to variant position
+                                                const windowSize = Math.max(20, displayEnd - displayStart);
+                                                const newStart = Math.max(1, start - Math.floor(windowSize / 2));
+                                                const newEnd = Math.min(seqLength, newStart + windowSize);
+                                                setDisplayStart(newStart);
+                                                setDisplayEnd(newEnd);
+                                            }}
+                                            title={`Click to jump to ${variant.accession}`}
+                                        >
+                                            <span className={styles.variantButtonId}>{variant.accession}</span>
+                                            <span className={styles.variantButtonPos}>pos {start}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         {/* Navigation ruler */}
                         <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
                             <NightingaleNavigationComponent
@@ -436,6 +561,37 @@ function FullscreenAlignmentContent() {
                                     margin-left={0}
                                     margin-right={5}
                                 />
+                            </div>
+                        )}
+
+                        {/* Variant position indicator row */}
+                        {allVariantsTrackData.length > 0 && (
+                            <div className={styles.trackContainer}>
+                                <div className={styles.trackLabel}>Variant Position</div>
+                                <div className={styles.variantIndicatorRow} style={{ marginLeft: labelWidth + 'px' }}>
+                                    {allVariantsTrackData.map((variant, idx) => {
+                                        const pos = variant.start ?? 1;
+                                        if (pos < displayStart || pos > displayEnd) {
+                                            return (
+                                                <div key={idx} className={styles.variantOutOfView}>
+                                                    ← {variant.accession} at pos {pos}
+                                                </div>
+                                            );
+                                        }
+                                        const viewWidth = displayEnd - displayStart + 1;
+                                        const leftPercent = ((pos - displayStart + 0.5) / viewWidth) * 100;
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={styles.variantIndicator}
+                                                style={{ left: `${leftPercent}%` }}
+                                            >
+                                                <div className={styles.variantIndicatorLine} />
+                                                <div className={styles.variantIndicatorLabel}>▼ {variant.accession}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
 
