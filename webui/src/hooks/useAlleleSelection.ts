@@ -15,6 +15,7 @@ export interface UseAlleleSelectionResult {
     // State
     alleleList: AlleleInfo[];
     alleleListLoading: boolean;
+    alleleListLoaded: boolean;
     selectedAlleleIds: string[];
     selectedAllelesInfo: AlleleInfo[];
     alleleListFocused: boolean;
@@ -41,12 +42,14 @@ export function useAlleleSelection(
     const [selectedAllelesInfo, setSelectedAllelesInfo] = useState<AlleleInfo[]>([]);
     const [alleleListFocused, setAlleleListFocused] = useState(false);
     const [alleleListOpened, setAlleleListOpened] = useState(false);
+    const [alleleListLoaded, setAlleleListLoaded] = useState(false);
     const [initialSelectionApplied, setInitialSelectionApplied] = useState(false);
 
     const resetSelection = useCallback(() => {
         setAlleleList([]);
         setSelectedAlleleIds([]);
         setSelectedAllelesInfo([]);
+        setAlleleListLoaded(false);
         setInitialSelectionApplied(false);
     }, []);
 
@@ -54,11 +57,12 @@ export function useAlleleSelection(
     const loadAllelesOnDemand = useCallback(async () => {
         if (gene && alleleList.length === 0 && !alleleListLoading) {
             console.log(`Lazy-loading alleles for gene: ${gene.id}`);
-            setAlleleListLoading(true);
+            setAlleleListLoading(true);  // Set immediately before any async work
             try {
                 const alleles = await fetchAlleles(gene.id);
                 console.log(`${alleles.length} alleles received.`);
                 setAlleleList(alleles);
+                setAlleleListLoaded(true);
             } catch (e) {
                 console.error('Error loading alleles:', e);
             } finally {
@@ -162,6 +166,7 @@ export function useAlleleSelection(
         // State
         alleleList,
         alleleListLoading,
+        alleleListLoaded,
         selectedAlleleIds,
         selectedAllelesInfo,
         alleleListFocused,

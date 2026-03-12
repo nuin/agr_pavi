@@ -20,8 +20,9 @@ from log_mgmt.log_manager import get_logger
 
 log = get_logger(__name__)
 
-# Add pipeline components to path - use absolute paths to avoid issues with __file__ and threads
-PIPELINE_COMPONENTS_PATH = Path("/home/ec2-user/agr_pavi/pipeline_components")
+# Pipeline components path - auto-detect from repo structure or use env var
+_default_components_path = Path(__file__).resolve().parent.parent.parent / "pipeline_components"
+PIPELINE_COMPONENTS_PATH = Path(os.environ.get("PAVI_PIPELINE_COMPONENTS_PATH", str(_default_components_path)))
 SEQ_RETRIEVAL_SRC = PIPELINE_COMPONENTS_PATH / "seq_retrieval" / "src"
 SEQ_RETRIEVAL_PYTHON = PIPELINE_COMPONENTS_PATH / "seq_retrieval" / ".venv" / "bin" / "python"
 

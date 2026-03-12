@@ -21,6 +21,16 @@ export interface AlignmentEntryProps {
     readonly initialAlleleIds?: string[];
 }
 
+// Helper to safely access variants regardless of Map vs plain object (server action serialization)
+const getVariantKeys = (variants: AlleleInfo['variants']): string[] =>
+    variants instanceof Map ? Array.from(variants.keys()) : Object.keys(variants as unknown as Record<string, unknown>);
+
+const getVariantValues = (variants: AlleleInfo['variants']): { id: string; displayName: string }[] =>
+    variants instanceof Map ? Array.from(variants.values()) : Object.values(variants as unknown as Record<string, { id: string; displayName: string }>);
+
+const getVariantCount = (variants: AlleleInfo['variants']): number =>
+    variants instanceof Map ? variants.size : Object.keys(variants as unknown as Record<string, unknown>).length;
+
 // Allele display helpers
 const alleleDisplayText = (alleleInfo: AlleleInfo) => {
     let text = alleleInfo.id;
@@ -32,10 +42,11 @@ const alleleDisplayText = (alleleInfo: AlleleInfo) => {
 
 const variantsDisplayText = (alleleInfo: AlleleInfo) => {
     let text = '';
-    if (alleleInfo.variants.size > 1) {
-        text = `(${alleleInfo.variants.size} variants)`;
+    const count = getVariantCount(alleleInfo.variants);
+    if (count > 1) {
+        text = `(${count} variants)`;
     } else {
-        const variant = Array.from(alleleInfo.variants.values()).pop();
+        const variant = getVariantValues(alleleInfo.variants).pop();
         if (variant?.displayName !== alleleInfo.displayName) {
             text += `(${variant?.displayName})`;
         }
@@ -199,7 +210,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         end: e.refEnd,
                         frame: e.phase,
                     })),
-                    variant_ids: alleles_info.map((a) => Array.from(a.variants.keys())).flat(),
+                    variant_ids: alleles_info.map((a) => getVariantKeys(a.variants)).flat(),
                     alt_seq_name_suffix: alt_seq_name_suffix,
                     species: gene_info.species.name,
                 });
@@ -263,9 +274,9 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
     // Allele option template for dropdown
     const alleleOptionTemplate = (option: { allele: AlleleInfo }) => {
         const alleleInfo = option.allele;
-        const variantCount = alleleInfo.variants.size;
+        const variantCount = getVariantCount(alleleInfo.variants);
         const variantLabel = variantCount === 1
-            ? Array.from(alleleInfo.variants.values())[0]?.displayName
+            ? getVariantValues(alleleInfo.variants)[0]?.displayName
             : `${variantCount} variants`;
 
         return (
@@ -362,6 +373,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                     <MultiSelect
                         id={`alleles-${props.index}`}
                         loading={alleleSelection.alleleListLoading}
+                        loadingIcon={<i className="pi pi-spin pi-spinner" />}
                         disabled={!geneSearch.gene}
                         ref={alleleMultiselectRef}
                         display="comma"
@@ -369,18 +381,18 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         style={{ width: '100%' }}
                         filter
                         filterBy="filterValue"
-                        emptyMessage={geneSearch.gene ? "No alleles with variants found" : "Select a gene first"}
+                        emptyMessage={!geneSearch.gene ? "Select a gene first" : (alleleSelection.alleleListLoading || alleleSelection.alleleList.length === 0 && !alleleSelection.alleleListLoaded) ? "Loading alleles..." : "No alleles with variants found"}
                         value={alleleSelection.selectedAlleleIds}
-                        onChange={(e) => alleleSelection.setSelectedAlleleIds(e.target.value)}
+                        onChange={(e) => alleleSelection.setSelectedAlleleIds(e.value)}
                         itemTemplate={alleleOptionTemplate}
                         optionLabel="chipLabel"
                         optionValue="key"
                         onFocus={() => alleleSelection.setAlleleListFocused(true)}
                         onBlur={() => alleleSelection.setAlleleListFocused(false)}
                         onHide={() => alleleSelection.setAlleleListOpened(false)}
-                        onShow={async () => {
+                        onShow={() => {
                             alleleSelection.setAlleleListOpened(true);
-                            await alleleSelection.loadAllelesOnDemand();
+                            alleleSelection.loadAllelesOnDemand();
                         }}
                         options={alleleSelection.alleleList.map((r) => ({
                             key: r['id'],

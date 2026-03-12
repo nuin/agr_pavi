@@ -84,22 +84,25 @@ def get_config() -> APIConfig:
     """
     env = get_environment()
 
-    # Check for local pipeline mode first (takes precedence)
+    # Check for local pipeline mode
+    # Defaults to True for LOCAL environment (no Nextflow dependency)
     use_local_pipeline_env = os.environ.get("USE_LOCAL_PIPELINE")
-    use_local_pipeline = use_local_pipeline_env is not None and use_local_pipeline_env.lower() == "true"
+    if use_local_pipeline_env is not None:
+        use_local_pipeline = use_local_pipeline_env.lower() == "true"
+    else:
+        # Auto-detect: LOCAL environment uses local pipeline by default
+        use_local_pipeline = env == Environment.LOCAL
 
     # Determine Step Functions settings based on environment
-    # Local = Nextflow, AWS (dev/staging/prod) = Step Functions
     # Can be overridden via USE_STEP_FUNCTIONS env var
     # Local pipeline mode disables both Step Functions and Nextflow
     use_step_functions_env = os.environ.get("USE_STEP_FUNCTIONS")
     if use_local_pipeline:
-        # Local pipeline mode: disable Step Functions
         use_step_functions = False
     elif use_step_functions_env is not None:
         use_step_functions = use_step_functions_env.lower() == "true"
     else:
-        # Auto-detect: local uses Nextflow, AWS environments use Step Functions
+        # AWS environments use Step Functions
         use_step_functions = env != Environment.LOCAL
 
     # Feature flag for gradual rollout

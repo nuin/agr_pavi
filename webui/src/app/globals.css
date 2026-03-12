@@ -1,5 +1,17 @@
 @import "primeicons/primeicons.css";
 
+/* Ensure PrimeReact and PrimeIcons loading spinners animate */
+.p-icon-spin,
+.pi-spin {
+    animation: p-icon-spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes p-icon-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 body {
     font-family: var(--font-family);
 }

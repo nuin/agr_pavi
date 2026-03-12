@@ -19,6 +19,8 @@ class SeqInfo:
 
     embedded_variants: Optional[SeqEmbeddedVariantsList | AlignmentEmbeddedVariantsList]
     """List of the variants embedded in the sequence or aligned sequence."""
+    requested_variant_ids: Optional[list[str]]
+    """List of variant IDs that were requested for embedding (may differ from embedded_variants when variants fall outside CDS)."""
     sequence: Optional[str]
     """The sequence as a string."""
     error: Optional[str]
@@ -32,6 +34,7 @@ class SeqInfo:
         embedded_variants: Optional[
             SeqEmbeddedVariantsList | AlignmentEmbeddedVariantsList
         ] = None,
+        requested_variant_ids: Optional[list[str]] = None,
         error: Optional[str] = None,
         species: Optional[str] = None,
     ):
@@ -40,6 +43,9 @@ class SeqInfo:
 
         if embedded_variants is not None:
             self.embedded_variants = embedded_variants
+
+        if requested_variant_ids is not None:
+            self.requested_variant_ids = requested_variant_ids
 
         if error is not None:
             self.error = error
@@ -54,6 +60,7 @@ class SeqInfo:
         embedded_variants: Optional[
             SeqEmbeddedVariantsList | AlignmentEmbeddedVariantsList
         ] = None
+        requested_variant_ids: Optional[list[str]] = None
         error: Optional[str] = None
         species: Optional[str] = None
 
@@ -81,6 +88,10 @@ class SeqInfo:
                     embedded_variants.append(AlignmentEmbeddedVariant.from_dict(dct))
                 else:
                     embedded_variants.append(SeqEmbeddedVariant.from_dict(dct))
+        if "requested_variant_ids" in seq_info_dict:
+            if not isinstance(seq_info_dict["requested_variant_ids"], list):
+                raise TypeError("requested_variant_ids must be a list")
+            requested_variant_ids = seq_info_dict["requested_variant_ids"]
         if "error" in seq_info_dict:
             if not isinstance(seq_info_dict["error"], str):
                 raise TypeError("error must be a string")
@@ -90,7 +101,8 @@ class SeqInfo:
                 raise TypeError("species must be a string")
             species = seq_info_dict["species"]
 
-        return cls(sequence=sequence, embedded_variants=embedded_variants, error=error, species=species)
+        return cls(sequence=sequence, embedded_variants=embedded_variants,
+                   requested_variant_ids=requested_variant_ids, error=error, species=species)
 
     @override
     def __repr__(self) -> str:

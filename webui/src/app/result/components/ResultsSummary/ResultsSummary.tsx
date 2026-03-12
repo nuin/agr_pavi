@@ -27,11 +27,58 @@ export interface AlignmentStats {
     conservationScore: number;
     gapPercentage: number;
     variantsCount: number;
+    requestedVariantsCount: number;
+    requestedVariantIds: string[];
+    embeddedVariantIds: string[];
     failuresCount: number;
     conservedPositions: number;
     pairwiseIdentities: PairwiseIdentity[];
     longestConservedBlock: ConservedBlock | null;
     speciesList: string[];
+}
+
+function VariantWarningPanel({ stats }: { stats: AlignmentStats }) {
+    const [showList, setShowList] = useState(false);
+    const skippedVariantIds = stats.requestedVariantIds.filter(
+        id => !stats.embeddedVariantIds.includes(id)
+    );
+
+    return (
+        <div className={styles.variantWarning}>
+            <div className={styles.variantWarningHeader}>
+                <i className="pi pi-info-circle" />
+                <span>
+                    {stats.variantsCount === 0
+                        ? `${stats.requestedVariantsCount} variant${stats.requestedVariantsCount > 1 ? 's were' : ' was'} selected but none produced protein sequence changes`
+                        : `${stats.requestedVariantsCount - stats.variantsCount} of ${stats.requestedVariantsCount} selected variant${stats.requestedVariantsCount > 1 ? 's' : ''} did not produce protein sequence changes`
+                    }
+                </span>
+            </div>
+            <p className={styles.variantWarningDetail}>
+                Variant effects are transcript-specific. A variant may be classified as missense at the gene level
+                but fall in a UTR or non-coding region for the selected transcript, producing no change in the
+                protein sequence. Try selecting a different transcript to see the variant&apos;s protein-level effect.
+            </p>
+            {skippedVariantIds.length > 0 && (
+                <div className={styles.variantListSection}>
+                    <button
+                        className={styles.variantListToggle}
+                        onClick={() => setShowList(!showList)}
+                    >
+                        <i className={`pi ${showList ? 'pi-chevron-down' : 'pi-chevron-right'}`} />
+                        {showList ? 'Hide' : 'Show'} selected variants ({skippedVariantIds.length})
+                    </button>
+                    {showList && (
+                        <div className={styles.variantList}>
+                            {skippedVariantIds.map(id => (
+                                <span key={id} className={styles.variantChip}>{id}</span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 }
 
 export interface ResultsSummaryProps {
@@ -64,6 +111,9 @@ export function ResultsSummary({
                 conservationScore: 0,
                 gapPercentage: 0,
                 variantsCount: 0,
+                requestedVariantsCount: 0,
+                requestedVariantIds: [],
+                embeddedVariantIds: [],
                 failuresCount: 0,
                 conservedPositions: 0,
                 pairwiseIdentities: [],
@@ -203,6 +253,8 @@ export function ResultsSummary({
         // Count variants and failures from seqInfoDict
         let variantsCount = 0;
         let failuresCount = 0;
+        const requestedVariantIdsSet = new Set<string>();
+        const embeddedVariantIdsSet = new Set<string>();
 
         if (seqInfoDict) {
             for (const seqInfo of Object.values(seqInfoDict)) {
@@ -211,6 +263,10 @@ export function ResultsSummary({
                 }
                 if (seqInfo.embedded_variants) {
                     variantsCount += seqInfo.embedded_variants.length;
+                    seqInfo.embedded_variants.forEach(v => embeddedVariantIdsSet.add(v.variant_id));
+                }
+                if (seqInfo.requested_variant_ids) {
+                    seqInfo.requested_variant_ids.forEach(id => requestedVariantIdsSet.add(id));
                 }
             }
         }
@@ -221,6 +277,9 @@ export function ResultsSummary({
             conservationScore,
             gapPercentage,
             variantsCount,
+            requestedVariantsCount: requestedVariantIdsSet.size,
+            requestedVariantIds: Array.from(requestedVariantIdsSet),
+            embeddedVariantIds: Array.from(embeddedVariantIdsSet),
             failuresCount,
             conservedPositions,
             pairwiseIdentities,
@@ -336,7 +395,9 @@ export function ResultsSummary({
                         <span className={styles.statLabel}>Variants</span>
                         <span className={`${styles.statValue} ${stats.variantsCount > 0 ? styles.warning : ''}`}>
                             <i className="pi pi-bolt" />
-                            {stats.variantsCount}
+                            {stats.requestedVariantsCount > 0
+                                ? `${stats.variantsCount} / ${stats.requestedVariantsCount} selected`
+                                : stats.variantsCount}
                         </span>
                     </div>
                     <div className={styles.statItem}>
@@ -396,6 +457,11 @@ export function ResultsSummary({
                             ))}
                         </div>
                     </div>
+                )}
+
+                {/* Variant Warning - when variants were selected but not all affected protein */}
+                {stats.requestedVariantsCount > 0 && stats.variantsCount < stats.requestedVariantsCount && (
+                    <VariantWarningPanel stats={stats} />
                 )}
 
                 {/* Conserved Positions & Longest Block */}
