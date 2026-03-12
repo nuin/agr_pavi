@@ -96,6 +96,45 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
             { geneId: 'HGNC:7576', geneName: 'MYH6', species: 'Homo sapiens' },
         ],
     },
+    {
+        id: 'trp53-cancer-variants',
+        name: 'Trp53 Cancer Variants',
+        description: 'Mouse Trp53 with 5 engineered cancer-associated point mutations compared to human and zebrafish orthologs',
+        category: 'advanced',
+        genes: [
+            {
+                geneId: 'MGI:98834', geneName: 'Trp53', species: 'Mus musculus',
+                alleleIds: [
+                    'MGI:6393635',   // Trp53<em1Yoli> - g.69482682A>C
+                    'MGI:6718305',   // Trp53<tm1.1Gpz> - g.69481498G>C
+                    'MGI:5431904',   // Trp53<tm1.1Rfo> - g.69480448C>T
+                    'MGI:6763106',   // Trp53<tm1.1Itl> - g.69480010A>G
+                    'MGI:6202103',   // Trp53<tm1.1Hwan> - g.69481498G>C
+                ],
+            },
+            { geneId: 'HGNC:11998', geneName: 'TP53', species: 'Homo sapiens' },
+            { geneId: 'ZFIN:ZDB-GENE-990415-270', geneName: 'tp53', species: 'Danio rerio' },
+        ],
+    },
+    {
+        id: 'sod1-als-variants',
+        name: 'SOD1 ALS Disease Variants',
+        description: 'Mouse Sod1 with ALS-associated alleles compared to rat ortholog — classic neurodegeneration model',
+        category: 'advanced',
+        genes: [
+            {
+                geneId: 'MGI:98351', geneName: 'Sod1', species: 'Mus musculus',
+                alleleIds: [
+                    'MGI:6157439',   // Sod1<em1Rhbr> - g.90017759C>T
+                    'MGI:6157441',   // Sod1<em2Rhbr> - g.90021288C>T
+                    'MGI:6157446',   // Sod1<em3Rhbr> - g.90022049G>C
+                    'MGI:6157448',   // Sod1<em4Rhbr> - g.90022074G>C
+                    'MGI:5575771',   // Sod1<m1H> - g.90022044A>G
+                ],
+            },
+            { geneId: 'RGD:3727', geneName: 'Sod1', species: 'Rattus norvegicus' },
+        ],
+    },
 ];
 
 interface ExampleDataLoaderProps {
