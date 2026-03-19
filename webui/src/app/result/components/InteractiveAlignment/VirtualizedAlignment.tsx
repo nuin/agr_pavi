@@ -664,35 +664,68 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     )}
 
                     {/* Variant position indicator row - shows exactly where variants are in current view */}
-                    {allVariantsTrackData.length > 0 && (
-                        <div className={styles.trackContainer}>
-                            <div className={styles.trackLabel}>Variant Position</div>
-                            <div className={styles.variantIndicatorRow} style={{ marginLeft: labelWidth + 'px' }}>
-                                {allVariantsTrackData.map((variant, idx) => {
-                                    const pos = variant.start ?? 1;
-                                    if (pos < displayStart || pos > displayEnd) {
+                    {allVariantsTrackData.length > 0 && (() => {
+                        // Compute stagger rows for visible variants to avoid label overlap
+                        const visibleVariants = allVariantsTrackData
+                            .map((variant, idx) => ({ variant, idx, pos: variant.start ?? 1 }))
+                            .filter(v => v.pos >= displayStart && v.pos <= displayEnd)
+                            .sort((a, b) => a.pos - b.pos);
+                        const viewWidth = displayEnd - displayStart + 1;
+                        // Assign rows: if a label would overlap the previous one, bump to next row
+                        const ROW_HEIGHT = 20;
+                        const LABEL_WIDTH_PERCENT = 18; // approximate label width as % of view
+                        const rowAssignments = new Map<number, number>();
+                        const rowEnds: number[] = []; // tracks rightmost % used per row
+                        for (const v of visibleVariants) {
+                            const leftPct = ((v.pos - displayStart + 0.5) / viewWidth) * 100;
+                            let assignedRow = 0;
+                            for (let r = 0; r < rowEnds.length; r++) {
+                                if (leftPct >= rowEnds[r]) {
+                                    assignedRow = r;
+                                    break;
+                                }
+                                assignedRow = r + 1;
+                            }
+                            rowAssignments.set(v.idx, assignedRow);
+                            if (assignedRow >= rowEnds.length) rowEnds.push(0);
+                            rowEnds[assignedRow] = leftPct + LABEL_WIDTH_PERCENT;
+                        }
+                        const maxRows = Math.max(1, rowEnds.length);
+                        const containerHeight = 8 + maxRows * ROW_HEIGHT;
+
+                        return (
+                            <div className={styles.trackContainer}>
+                                <div className={styles.trackLabel}>Variant Position</div>
+                                <div className={styles.variantIndicatorRow} style={{ marginLeft: labelWidth + 'px', height: containerHeight + 'px' }}>
+                                    {allVariantsTrackData.map((variant, idx) => {
+                                        const pos = variant.start ?? 1;
+                                        if (pos < displayStart || pos > displayEnd) {
+                                            return (
+                                                <div key={idx} className={styles.variantOutOfView}>
+                                                    ← {variant.accession} at pos {pos}
+                                                </div>
+                                            );
+                                        }
+                                        const leftPercent = ((pos - displayStart + 0.5) / viewWidth) * 100;
+                                        const row = rowAssignments.get(idx) ?? 0;
+                                        const labelTop = 4 + row * ROW_HEIGHT;
+                                        // Stick grows from bottom of container up to the label
+                                        const stickHeight = containerHeight - labelTop;
                                         return (
-                                            <div key={idx} className={styles.variantOutOfView}>
-                                                ← {variant.accession} at pos {pos}
+                                            <div
+                                                key={idx}
+                                                className={styles.variantIndicator}
+                                                style={{ left: `${leftPercent}%`, height: containerHeight + 'px' }}
+                                            >
+                                                <div className={styles.variantIndicatorLine} style={{ position: 'absolute', bottom: 0, height: stickHeight + 'px' }} />
+                                                <div className={styles.variantIndicatorLabel} style={{ top: `${labelTop}px` }}>▼ {variant.accession}</div>
                                             </div>
                                         );
-                                    }
-                                    const viewWidth = displayEnd - displayStart + 1;
-                                    const leftPercent = ((pos - displayStart + 0.5) / viewWidth) * 100;
-                                    return (
-                                        <div
-                                            key={idx}
-                                            className={styles.variantIndicator}
-                                            style={{ left: `${leftPercent}%` }}
-                                        >
-                                            <div className={styles.variantIndicatorLine} />
-                                            <div className={styles.variantIndicatorLabel}>▼ {variant.accession}</div>
-                                        </div>
-                                    );
-                                })}
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* MSA container */}
                     <div className={styles.trackContainer}>

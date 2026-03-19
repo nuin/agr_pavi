@@ -160,7 +160,7 @@ class JobService:
 
         # Local pipeline paths (from config or environment)
         self.local_results_path = os.environ.get(
-            "PAVI_LOCAL_RESULTS_PATH", "/var/lib/pavi/results"
+            "PAVI_LOCAL_RESULTS_PATH", "/tmp/pavi/results"
         )
 
         # AWS clients - lazily initialized

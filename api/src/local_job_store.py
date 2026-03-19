@@ -33,8 +33,8 @@ class LocalJobStore:
             db_path: Path to SQLite database file. If None, uses default location.
         """
         if db_path is None:
-            # Default to /var/lib/pavi/jobs/jobs.db
-            default_dir = os.environ.get("PAVI_LOCAL_JOBS_PATH", "/var/lib/pavi/jobs")
+            # Default to /tmp/pavi/jobs/jobs.db
+            default_dir = os.environ.get("PAVI_LOCAL_JOBS_PATH", "/tmp/pavi/jobs")
             Path(default_dir).mkdir(parents=True, exist_ok=True)
             db_path = os.path.join(default_dir, "jobs.db")
 

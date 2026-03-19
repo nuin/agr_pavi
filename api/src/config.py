@@ -44,9 +44,9 @@ class PipelineConfig:
 
     # Local pipeline execution (for EC2 deployment)
     use_local_pipeline: bool = False
-    local_jobs_path: str = "/var/lib/pavi/jobs"
-    local_results_path: str = "/var/lib/pavi/results"
-    local_work_path: str = "/var/lib/pavi/work"
+    local_jobs_path: str = "/tmp/pavi/jobs"
+    local_results_path: str = "/tmp/pavi/results"
+    local_work_path: str = "/tmp/pavi/work"
     local_max_workers: int = 4  # Max parallel sequence retrieval tasks
 
 
@@ -154,9 +154,9 @@ def get_config() -> APIConfig:
     assert isinstance(work_bucket, str)
 
     # Local pipeline configuration
-    local_jobs_path = os.environ.get("PAVI_LOCAL_JOBS_PATH", "/var/lib/pavi/jobs")
-    local_results_path = os.environ.get("PAVI_LOCAL_RESULTS_PATH", "/var/lib/pavi/results")
-    local_work_path = os.environ.get("PAVI_LOCAL_WORK_PATH", "/var/lib/pavi/work")
+    local_jobs_path = os.environ.get("PAVI_LOCAL_JOBS_PATH", "/tmp/pavi/jobs")
+    local_results_path = os.environ.get("PAVI_LOCAL_RESULTS_PATH", "/tmp/pavi/results")
+    local_work_path = os.environ.get("PAVI_LOCAL_WORK_PATH", "/tmp/pavi/work")
     local_max_workers = int(os.environ.get("PAVI_LOCAL_MAX_WORKERS", "4"))
 
     pipeline_config = PipelineConfig(

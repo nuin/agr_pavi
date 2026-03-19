@@ -513,7 +513,7 @@
 /* Variant indicator row above alignment */
 .variantIndicatorRow {
   position: relative;
-  height: 32px;
+  min-height: 32px;
   background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
   border: 1px solid #fecaca;
   border-radius: 6px;
@@ -533,7 +533,6 @@
 .variantIndicatorLine {
   width: 3px;
   height: 100%;
-  min-height: 32px;
   background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
@@ -541,7 +540,6 @@
 
 .variantIndicatorLabel {
   position: absolute;
-  top: 2px;
   left: 8px;
   white-space: nowrap;
   font-size: 0.6875rem;

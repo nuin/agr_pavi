@@ -45,8 +45,8 @@ class LocalPipelineRunner:
 
     def __init__(
         self,
-        work_dir: str = "/var/lib/pavi/work",
-        results_dir: str = "/var/lib/pavi/results",
+        work_dir: str = "/tmp/pavi/work",
+        results_dir: str = "/tmp/pavi/results",
         max_workers: int = 4,
         progress_callback: Optional[Callable[[str, str, int], None]] = None,
     ):
