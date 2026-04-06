@@ -17,7 +17,7 @@ import NightingaleMSAComponent, {
 } from './nightingale/MSA';
 import NightingaleManagerComponent from './nightingale/Manager';
 import NightingaleNavigationComponent from './nightingale/Navigation';
-import {
+import NightingaleTrackComponent, {
     dataPropType as TrackDataProp
 } from './nightingale/Track';
 import NightingaleLinegraphTrack, { LineData } from './nightingale/LinegraphTrack';
@@ -56,9 +56,15 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const variantTrackRef = useRef<HTMLDivElement>(null);
+    const [variantTrackWidth, setVariantTrackWidth] = useState(0);
 
     const [alignmentColorScheme, setAlignmentColorScheme] = useState<string>('clustal2');
+    // Overlay toggles (Tier 1: SAB mockup "Show:" panel)
     const [showConservation, setShowConservation] = useState<boolean>(false);
+    const [showVariantLocations, setShowVariantLocations] = useState<boolean>(true);
+    const [showProteinDomains, setShowProteinDomains] = useState<boolean>(false);
+    const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
     const [referenceIndex, setReferenceIndex] = useState<number>(0); // Index of sequence to show at top
@@ -170,9 +176,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         accession: variant.variant_id,
                         start: variant.alignment_start_pos,
                         end: variant.alignment_end_pos,
-                        color: '#ef4444',
-                        shape: variant.seq_substitution_type === 'deletion' ? 'triangle' :
-                               variant.seq_substitution_type === 'insertion' ? 'chevron' : 'diamond'
+                        color: '#3b82f6',
+                        shape: 'circle' as const
                     });
                 }
             }
@@ -235,6 +240,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             altSeq: string;
             position: string;
             type: string;
+            alignmentPos: number;
         }> = [];
 
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
@@ -246,7 +252,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         refSeq: variant.genomic_ref_seq || '-',
                         altSeq: variant.genomic_alt_seq || '-',
                         position: `${variant.genomic_seq_id}:${variant.genomic_start_pos}-${variant.genomic_end_pos}`,
-                        type: variant.seq_substitution_type
+                        type: variant.seq_substitution_type,
+                        alignmentPos: variant.alignment_start_pos
                     });
                 }
             }
@@ -455,6 +462,18 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         return () => window.removeEventListener('resize', updateHeight);
     }, []);
 
+    // Track variant track container width for pixel-accurate positioning
+    useEffect(() => {
+        if (!variantTrackRef.current) return;
+        const ro = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setVariantTrackWidth(entry.contentRect.width);
+            }
+        });
+        ro.observe(variantTrackRef.current);
+        return () => ro.disconnect();
+    }, []);
+
     // Update zoom to show readable sequence at centre of alignment
     useEffect(() => {
         if (seqLength === 0) return;
@@ -505,8 +524,22 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     </div>
                     <div className={styles.variantGrid}>
                         {alleleInfo.map((allele, idx) => (
-                            <div key={idx} className={styles.variantCard}>
-                                <div className={styles.variantId}>{allele.variantId}</div>
+                            <div
+                                key={idx}
+                                className={`${styles.variantCard} ${styles.variantCardClickable}`}
+                                onClick={() => {
+                                    const windowSize = Math.max(20, displayEnd - displayStart);
+                                    const newStart = Math.max(1, allele.alignmentPos - Math.floor(windowSize / 2));
+                                    const newEnd = Math.min(seqLength, newStart + windowSize);
+                                    setDisplayStart(newStart);
+                                    setDisplayEnd(newEnd);
+                                }}
+                                title={`Click to jump to alignment position ${allele.alignmentPos}`}
+                            >
+                                <div className={styles.variantId}>
+                                    <span className={styles.variantNumber}>{idx + 1}</span>
+                                    {allele.variantId}
+                                </div>
                                 <div className={styles.variantDetails}>
                                     <span className={styles.variantChange}>
                                         {allele.refSeq} → {allele.altSeq}
@@ -515,7 +548,10 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                         {allele.type}
                                     </span>
                                 </div>
-                                <div className={styles.variantPosition}>{allele.position}</div>
+                                <div className={styles.variantPosition}>
+                                    {allele.position}
+                                    <span className={styles.variantAlnPos}>alignment pos {allele.alignmentPos}</span>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -539,14 +575,43 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     />
                 </div>
 
-                <label className={styles.conservationToggle}>
-                    <input
-                        type="checkbox"
-                        checked={showConservation}
-                        onChange={(e) => setShowConservation(e.target.checked)}
-                    />
-                    <span>Show Conservation</span>
-                </label>
+                <div className={styles.overlayPanel}>
+                    <span className={styles.overlayPanelLabel}>Show:</span>
+                    <label className={styles.overlayToggle}>
+                        <input
+                            type="checkbox"
+                            checked={showVariantLocations}
+                            onChange={(e) => setShowVariantLocations(e.target.checked)}
+                        />
+                        <span>Variant Locations</span>
+                    </label>
+                    <label className={styles.overlayToggle}>
+                        <input
+                            type="checkbox"
+                            checked={showConservation}
+                            onChange={(e) => setShowConservation(e.target.checked)}
+                        />
+                        <span>Conservation</span>
+                    </label>
+                    <label className={`${styles.overlayToggle} ${styles.overlayDisabled}`}>
+                        <input
+                            type="checkbox"
+                            checked={showProteinDomains}
+                            onChange={(e) => setShowProteinDomains(e.target.checked)}
+                            disabled
+                        />
+                        <span>Protein Domains</span>
+                    </label>
+                    <label className={`${styles.overlayToggle} ${styles.overlayDisabled}`}>
+                        <input
+                            type="checkbox"
+                            checked={showExonBoundaries}
+                            onChange={(e) => setShowExonBoundaries(e.target.checked)}
+                            disabled
+                        />
+                        <span>Exon Boundaries</span>
+                    </label>
+                </div>
 
                 <span className={styles.sequenceCount}>
                     <strong>{visibleData.length}</strong> of <strong>{fullAlignmentData.length}</strong> sequences
@@ -575,39 +640,26 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 
             {/* Alignment View */}
             <div className={styles.alignmentViewWrapper}>
-                {/* Variant position indicator - shows ALL variant locations on the sequence */}
-                {allVariantsTrackData.length > 0 && (
-                    <div className={styles.variantPositionBar}>
-                        <div className={styles.variantPositionLabel}>
-                            <i className="pi pi-bolt" />
-                            <span>Variants:</span>
-                        </div>
-                        {allVariantsTrackData.map((variant, idx) => {
-                            const start = variant.start ?? 1;
-                            return (
-                                <button
-                                    key={idx}
-                                    className={styles.variantButton}
-                                    onClick={() => {
-                                        // Jump to variant position
-                                        const windowSize = Math.max(20, displayEnd - displayStart);
-                                        const newStart = Math.max(1, start - Math.floor(windowSize / 2));
-                                        const newEnd = Math.min(seqLength, newStart + windowSize);
-                                        setDisplayStart(newStart);
-                                        setDisplayEnd(newEnd);
-                                    }}
-                                    title={`Click to jump to ${variant.accession}`}
-                                >
-                                    <span className={styles.variantButtonId}>{variant.accession}</span>
-                                    <span className={styles.variantButtonPos}>pos {start}</span>
-                                </button>
-                            );
-                        })}
+                {/* Variant position buttons removed — cards in info panel handle navigation */}
+
+                {/* Sequence selector for reordering — above the tracks */}
+                {orderedAlignmentData.length > 1 && (
+                    <div className={styles.sequenceSelector}>
+                        {orderedAlignmentData.map((seq, idx) => (
+                            <button
+                                key={seq.name}
+                                className={`${styles.sequenceChip} ${idx === 0 ? styles.isReference : ''}`}
+                                onClick={() => promoteToReference(idx)}
+                                title={idx === 0 ? 'Reference sequence (at top)' : 'Click to move to top'}
+                            >
+                                {seq.name}
+                            </button>
+                        ))}
                     </div>
                 )}
 
                 <NightingaleManagerComponent reflected-attributes="display-start,display-end">
-                    {/* Navigation with variant markers */}
+                    {/* Position Navigator */}
                     <div className={styles.trackContainer}>
                         <div className={styles.trackLabel}>Position Navigator</div>
                         <div className={styles.navigationTrack} style={{ paddingLeft: labelWidth + 'px' }}>
@@ -647,85 +699,34 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         </div>
                     )}
 
-                    {/* Sequence selector for reordering */}
-                    {orderedAlignmentData.length > 1 && (
-                        <div className={styles.sequenceSelector}>
-                            {orderedAlignmentData.map((seq, idx) => (
-                                <button
-                                    key={seq.name}
-                                    className={`${styles.sequenceChip} ${idx === 0 ? styles.isReference : ''}`}
-                                    onClick={() => promoteToReference(idx)}
-                                    title={idx === 0 ? 'Reference sequence (at top)' : 'Click to move to top'}
-                                >
-                                    {seq.name}
-                                </button>
-                            ))}
+                    {/* Variant track — numbered circles using Nightingale's positioning formula */}
+                    {showVariantLocations && allVariantsTrackData.length > 0 && (
+                        <div className={styles.trackContainer}>
+                            <div className={styles.trackLabel}>Variants</div>
+                            <div
+                                ref={variantTrackRef}
+                                className={styles.variantTrack}
+                                style={{ marginLeft: labelWidth + 'px', marginRight: '5px' }}
+                            >
+                                {variantTrackWidth > 0 && allVariantsTrackData.map((variant, idx) => {
+                                    const pos = variant.start ?? 1;
+                                    if (pos < displayStart || pos > displayEnd) return null;
+                                    // Nightingale formula: X = W * (P - DS + 0.5) / (DE - DS + 1)
+                                    const viewSpan = displayEnd - displayStart + 1;
+                                    const pixelX = variantTrackWidth * (pos - displayStart + 0.5) / viewSpan;
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className={styles.variantCircle}
+                                            style={{ left: pixelX + 'px' }}
+                                        >
+                                            {idx + 1}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
-
-                    {/* Variant position indicator row - shows exactly where variants are in current view */}
-                    {allVariantsTrackData.length > 0 && (() => {
-                        // Compute stagger rows for visible variants to avoid label overlap
-                        const visibleVariants = allVariantsTrackData
-                            .map((variant, idx) => ({ variant, idx, pos: variant.start ?? 1 }))
-                            .filter(v => v.pos >= displayStart && v.pos <= displayEnd)
-                            .sort((a, b) => a.pos - b.pos);
-                        const viewWidth = displayEnd - displayStart + 1;
-                        // Assign rows: if a label would overlap the previous one, bump to next row
-                        const ROW_HEIGHT = 20;
-                        const LABEL_WIDTH_PERCENT = 18; // approximate label width as % of view
-                        const rowAssignments = new Map<number, number>();
-                        const rowEnds: number[] = []; // tracks rightmost % used per row
-                        for (const v of visibleVariants) {
-                            const leftPct = ((v.pos - displayStart + 0.5) / viewWidth) * 100;
-                            let assignedRow = 0;
-                            for (let r = 0; r < rowEnds.length; r++) {
-                                if (leftPct >= rowEnds[r]) {
-                                    assignedRow = r;
-                                    break;
-                                }
-                                assignedRow = r + 1;
-                            }
-                            rowAssignments.set(v.idx, assignedRow);
-                            if (assignedRow >= rowEnds.length) rowEnds.push(0);
-                            rowEnds[assignedRow] = leftPct + LABEL_WIDTH_PERCENT;
-                        }
-                        const maxRows = Math.max(1, rowEnds.length);
-                        const containerHeight = 8 + maxRows * ROW_HEIGHT;
-
-                        return (
-                            <div className={styles.trackContainer}>
-                                <div className={styles.trackLabel}>Variant Position</div>
-                                <div className={styles.variantIndicatorRow} style={{ marginLeft: labelWidth + 'px', height: containerHeight + 'px' }}>
-                                    {allVariantsTrackData.map((variant, idx) => {
-                                        const pos = variant.start ?? 1;
-                                        if (pos < displayStart || pos > displayEnd) {
-                                            return (
-                                                <div key={idx} className={styles.variantOutOfView}>
-                                                    ← {variant.accession} at pos {pos}
-                                                </div>
-                                            );
-                                        }
-                                        const leftPercent = ((pos - displayStart + 0.5) / viewWidth) * 100;
-                                        const row = rowAssignments.get(idx) ?? 0;
-                                        const labelTop = 4 + row * ROW_HEIGHT;
-                                        // Stick grows from bottom of container up to the label
-                                        const stickHeight = containerHeight - labelTop;
-                                        return (
-                                            <div
-                                                key={idx}
-                                                className={styles.variantIndicator}
-                                                style={{ left: `${leftPercent}%`, height: containerHeight + 'px' }}
-                                            >
-                                                <div className={styles.variantIndicatorLine} style={{ position: 'absolute', bottom: 0, height: stickHeight + 'px' }} />
-                                                <div className={styles.variantIndicatorLabel} style={{ top: `${labelTop}px` }}>▼ {variant.accession}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })()}
 
                     {/* MSA container */}
                     <div className={styles.trackContainer}>

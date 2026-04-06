@@ -66,7 +66,11 @@ function FullscreenAlignmentContent() {
     const [error, setError] = useState<string | null>(null);
 
     const [alignmentColorScheme, setAlignmentColorScheme] = useState<string>('clustal2');
+    // Overlay toggles
     const [showConservation, setShowConservation] = useState<boolean>(false);
+    const [showVariantLocations, setShowVariantLocations] = useState<boolean>(true);
+    const [showProteinDomains, setShowProteinDomains] = useState<boolean>(false);
+    const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
     const [displayStart, setDisplayStart] = useState<number>(1);
     const [displayEnd, setDisplayEnd] = useState<number>(50);
 
@@ -434,14 +438,25 @@ function FullscreenAlignmentContent() {
                         />
                     </div>
 
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                        <input
-                            type="checkbox"
-                            checked={showConservation}
-                            onChange={(e) => setShowConservation(e.target.checked)}
-                        />
-                        Conservation graph
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ccc', marginRight: '0.25rem' }}>Show:</span>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                            <input type="checkbox" checked={showVariantLocations} onChange={(e) => setShowVariantLocations(e.target.checked)} />
+                            Variants
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                            <input type="checkbox" checked={showConservation} onChange={(e) => setShowConservation(e.target.checked)} />
+                            Conservation
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', padding: '0.2rem 0.4rem', opacity: 0.45, cursor: 'not-allowed' }}>
+                            <input type="checkbox" checked={showProteinDomains} disabled />
+                            Domains
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', padding: '0.2rem 0.4rem', opacity: 0.45, cursor: 'not-allowed' }}>
+                            <input type="checkbox" checked={showExonBoundaries} disabled />
+                            Exon Boundaries
+                        </label>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -499,37 +514,6 @@ function FullscreenAlignmentContent() {
                     <NightingaleManagerComponent
                         reflected-attributes="display-start,display-end"
                     >
-                        {/* Variant position bar - clickable buttons to jump to variants */}
-                        {allVariantsTrackData.length > 0 && (
-                            <div className={styles.variantPositionBar}>
-                                <div className={styles.variantPositionLabel}>
-                                    <i className="pi pi-bolt" />
-                                    <span>Variants:</span>
-                                </div>
-                                {allVariantsTrackData.map((variant, idx) => {
-                                    const start = variant.start ?? 1;
-                                    return (
-                                        <button
-                                            key={idx}
-                                            className={styles.variantButton}
-                                            onClick={() => {
-                                                // Jump to variant position
-                                                const windowSize = Math.max(20, displayEnd - displayStart);
-                                                const newStart = Math.max(1, start - Math.floor(windowSize / 2));
-                                                const newEnd = Math.min(seqLength, newStart + windowSize);
-                                                setDisplayStart(newStart);
-                                                setDisplayEnd(newEnd);
-                                            }}
-                                            title={`Click to jump to ${variant.accession}`}
-                                        >
-                                            <span className={styles.variantButtonId}>{variant.accession}</span>
-                                            <span className={styles.variantButtonPos}>pos {start}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-
                         {/* Navigation ruler */}
                         <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
                             <NightingaleNavigationComponent
@@ -565,7 +549,7 @@ function FullscreenAlignmentContent() {
                         )}
 
                         {/* Variant position indicator row */}
-                        {allVariantsTrackData.length > 0 && (
+                        {showVariantLocations && allVariantsTrackData.length > 0 && (
                             <div className={styles.trackContainer}>
                                 <div className={styles.trackLabel}>Variant Position</div>
                                 <div className={styles.variantIndicatorRow} style={{ marginLeft: labelWidth + 'px' }}>
