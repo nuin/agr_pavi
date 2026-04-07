@@ -499,14 +499,7 @@
   margin-bottom: 0.5rem;
 }
 
-/* Variant track styling */
-.variantTrack {
-  background: linear-gradient(180deg, #fefce8 0%, #ffffff 100%);
-  border: 1px solid #fde68a;
-  border-radius: 6px;
-  padding: 0.375rem;
-  margin-bottom: 0.5rem;
-}
+/* (legacy .variantTrack styling removed — replaced by pixel-positioned variant track below) */
 
 /* Variant position bar - clickable variant buttons */
 .variantPositionBar {
@@ -570,9 +563,9 @@
   font-weight: 500;
 }
 
-/* Variant indicator row above alignment */
 /* Variant track — pixel-positioned numbered circles */
 .variantTrack {
+  position: relative;
   overflow: hidden;
   background: #f0f4f8;
   border-bottom: 1px solid #cbd5e1;
