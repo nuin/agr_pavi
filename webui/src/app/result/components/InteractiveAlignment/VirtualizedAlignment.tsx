@@ -56,8 +56,21 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const variantTrackRef = useRef<HTMLDivElement>(null);
     const [variantTrackWidth, setVariantTrackWidth] = useState(0);
+    // Callback ref: fires when variant track div mounts/unmounts (handles conditional rendering)
+    const variantTrackRef = useCallback((el: HTMLDivElement | null) => {
+        if (!el) return;
+        // Initial measurement
+        setVariantTrackWidth(el.clientWidth);
+        // Watch for resize
+        const ro = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setVariantTrackWidth(entry.contentRect.width);
+            }
+        });
+        ro.observe(el);
+        // No cleanup needed — callback refs handle this via the null call on unmount
+    }, []);
 
     const [alignmentColorScheme, setAlignmentColorScheme] = useState<string>('clustal2');
     // Overlay toggles (Tier 1: SAB mockup "Show:" panel)
@@ -460,18 +473,6 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         updateHeight();
         window.addEventListener('resize', updateHeight);
         return () => window.removeEventListener('resize', updateHeight);
-    }, []);
-
-    // Track variant track container width for pixel-accurate positioning
-    useEffect(() => {
-        if (!variantTrackRef.current) return;
-        const ro = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                setVariantTrackWidth(entry.contentRect.width);
-            }
-        });
-        ro.observe(variantTrackRef.current);
-        return () => ro.disconnect();
     }, []);
 
     // Update zoom to show readable sequence at centre of alignment
