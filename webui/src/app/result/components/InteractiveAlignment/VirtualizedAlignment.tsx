@@ -17,9 +17,7 @@ import NightingaleMSAComponent, {
 } from './nightingale/MSA';
 import NightingaleManagerComponent from './nightingale/Manager';
 import NightingaleNavigationComponent from './nightingale/Navigation';
-import NightingaleTrackComponent, {
-    dataPropType as TrackDataProp
-} from './nightingale/Track';
+import { dataPropType as TrackDataProp } from './nightingale/Track';
 import NightingaleLinegraphTrack, { LineData } from './nightingale/LinegraphTrack';
 
 import { Dropdown } from 'primereact/dropdown';

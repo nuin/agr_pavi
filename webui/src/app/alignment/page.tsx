@@ -69,8 +69,8 @@ function FullscreenAlignmentContent() {
     // Overlay toggles
     const [showConservation, setShowConservation] = useState<boolean>(false);
     const [showVariantLocations, setShowVariantLocations] = useState<boolean>(true);
-    const [showProteinDomains, setShowProteinDomains] = useState<boolean>(false);
-    const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
+    const [showProteinDomains, _setShowProteinDomains] = useState<boolean>(false);
+    const [showExonBoundaries, _setShowExonBoundaries] = useState<boolean>(false);
     const [displayStart, setDisplayStart] = useState<number>(1);
     const [displayEnd, setDisplayEnd] = useState<number>(50);
 
