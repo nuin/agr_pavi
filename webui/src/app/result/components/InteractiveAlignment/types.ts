@@ -21,5 +21,6 @@ export interface EmbeddedVariant {
     genomic_end_pos: number,
     genomic_ref_seq: string,
     genomic_alt_seq: string,
-    seq_substitution_type: string
+    seq_substitution_type: string,
+    molecular_consequences?: string[]
 }
