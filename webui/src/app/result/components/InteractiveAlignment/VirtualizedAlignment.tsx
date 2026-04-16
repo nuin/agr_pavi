@@ -292,6 +292,9 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             position: string;
             type: string;
             alignmentPos: number;
+            hgvsProtein: string | null;
+            impact: string | null;
+            consequences: string[];
         }> = [];
 
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
@@ -306,7 +309,10 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         altSeq: variant.genomic_alt_seq || '-',
                         position: `${variant.genomic_seq_id}:${variant.genomic_start_pos}-${variant.genomic_end_pos}`,
                         type: variant.seq_substitution_type,
-                        alignmentPos: variant.alignment_start_pos
+                        alignmentPos: variant.alignment_start_pos,
+                        hgvsProtein: variant.hgvs_protein || null,
+                        impact: variant.impact || null,
+                        consequences: variant.molecular_consequences || [],
                     });
                 }
             }
@@ -613,6 +619,18 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                     {allele.position}
                                     <span className={styles.variantAlnPos}>alignment pos {allele.alignmentPos}</span>
                                 </div>
+                                {allele.hgvsProtein && (
+                                    <div className={styles.variantHgvs}>{allele.hgvsProtein}</div>
+                                )}
+                                {allele.consequences.length > 0 && (
+                                    <div className={styles.variantConsequences}>
+                                        {allele.consequences.map(mc => (
+                                            <span key={mc} className={styles.consequenceBadge}>
+                                                {mc.replace(/_/g, ' ')}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

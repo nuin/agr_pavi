@@ -22,5 +22,8 @@ export interface EmbeddedVariant {
     genomic_ref_seq: string,
     genomic_alt_seq: string,
     seq_substitution_type: string,
-    molecular_consequences?: string[]
+    molecular_consequences?: string[],
+    hgvs_protein?: string,
+    hgvs_coding?: string,
+    impact?: string
 }
