@@ -50,6 +50,9 @@ def wb_variant_yn10() -> Variant:
             "stop_lost",
             "intron_variant",
         ],
+        hgvs_protein="WB:CE04209:p.Arg174IlefsTer49",
+        hgvs_coding="WB:C42D8.8a.1:c.519_1876del",
+        impact="HIGH",
     )
 
 

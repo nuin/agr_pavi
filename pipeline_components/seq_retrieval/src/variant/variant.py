@@ -81,6 +81,9 @@ class Variant:
         genomic_ref_seq: Optional[str] = None,
         genomic_alt_seq: Optional[str] = None,
         molecular_consequences: Optional[List[str]] = None,
+        hgvs_protein: Optional[str] = None,
+        hgvs_coding: Optional[str] = None,
+        impact: Optional[str] = None,
     ):
         """
         Initializes a Variant instance.
@@ -93,6 +96,9 @@ class Variant:
             genomic_ref_seq: Reference sequence at the variant position.
             genomic_alt_seq: Alternative sequence at the variant position.
             molecular_consequences: List of SO terms describing the variant's molecular consequences.
+            hgvs_protein: HGVS protein nomenclature (e.g. NP_000316.2:p.Leu278Ser).
+            hgvs_coding: HGVS coding nomenclature (e.g. NM_000325.6:c.833T>C).
+            impact: Predicted impact of the variant (e.g. MODERATE).
         """
         # Ensure start <= end
         if start > end:
@@ -136,6 +142,9 @@ class Variant:
         self.genomic_alt_seq = genomic_alt_seq or ""
         self.seq_substitution_type = substitution_type
         self.molecular_consequences = molecular_consequences or []
+        self.hgvs_protein = hgvs_protein
+        self.hgvs_coding = hgvs_coding
+        self.impact = impact
 
     def affects_protein_sequence(self) -> bool:
         """
@@ -219,6 +228,9 @@ class Variant:
                 and self.genomic_ref_seq == other.genomic_ref_seq
                 and self.genomic_alt_seq == other.genomic_alt_seq
                 and self.molecular_consequences == other.molecular_consequences
+                and self.hgvs_protein == other.hgvs_protein
+                and self.hgvs_coding == other.hgvs_coding
+                and self.impact == other.impact
             ):
                 return True
         return False
@@ -261,6 +273,16 @@ class Variant:
                     if mc not in molecular_consequences:
                         molecular_consequences.append(mc)
 
+        # Extract HGVS nomenclature and impact from first transcript consequence
+        hgvs_protein = None
+        hgvs_coding = None
+        impact = None
+        if transcript_consequences:
+            first = transcript_consequences[0]
+            hgvs_protein = first.get("hgvsProteinNomenclature")
+            hgvs_coding = first.get("hgvsCodingNomenclature")
+            impact = first.get("impact")
+
         return cls(
             variant_id=variant_id,
             seq_id=variant_data["location"]["chromosome"],
@@ -269,6 +291,9 @@ class Variant:
             genomic_ref_seq=variant_data.get("genomicReferenceSequence"),
             genomic_alt_seq=variant_data.get("genomicVariantSequence"),
             molecular_consequences=molecular_consequences,
+            hgvs_protein=hgvs_protein,
+            hgvs_coding=hgvs_coding,
+            impact=impact,
         )
 
     def overlaps(self, other: "Variant|SeqRegion") -> bool:

@@ -412,6 +412,38 @@ def test_variant_overlaps(
     assert wb_variant_e1178.overlaps(wb_variant_yn10) is False
 
 
+def test_variant_stores_hgvs_and_impact():
+    v = Variant(
+        variant_id="test:123",
+        seq_id="chr1",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        molecular_consequences=["missense_variant"],
+        hgvs_protein="NP_000316.2:p.Leu278Ser",
+        hgvs_coding="NM_000325.6:c.833T>C",
+        impact="MODERATE"
+    )
+    assert v.hgvs_protein == "NP_000316.2:p.Leu278Ser"
+    assert v.hgvs_coding == "NM_000325.6:c.833T>C"
+    assert v.impact == "MODERATE"
+
+
+def test_variant_hgvs_defaults_to_none():
+    v = Variant(
+        variant_id="test:456",
+        seq_id="chr1",
+        start=200,
+        end=200,
+        genomic_ref_seq="C",
+        genomic_alt_seq="G",
+    )
+    assert v.hgvs_protein is None
+    assert v.hgvs_coding is None
+    assert v.impact is None
+
+
 def test_variants_overlap(
     wb_variant_yn10: Variant, wb_variant_yn30: Variant, wb_variant_yn32: Variant
 ) -> None:
