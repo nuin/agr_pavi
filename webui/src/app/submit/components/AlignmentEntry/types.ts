@@ -23,6 +23,7 @@ export interface TranscriptInfo {
     readonly curie: string,
     readonly name: string,
     readonly strand: FeatureStrand,
+    readonly proteinAccession?: string,
     readonly exons: Array<{
         refStart: number
         refEnd: number

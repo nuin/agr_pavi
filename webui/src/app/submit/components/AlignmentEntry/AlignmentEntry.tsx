@@ -357,11 +357,31 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         onBlur={() => transcriptSelection.setTranscriptListFocused(false)}
                         onHide={() => transcriptSelection.setTranscriptListOpened(false)}
                         onShow={() => transcriptSelection.setTranscriptListOpened(true)}
-                        options={transcriptSelection.transcriptList.map((r) => ({
-                            key: r.id(),
-                            value: r.id(),
-                            label: r.get('name'),
-                        }))}
+                        itemTemplate={(option: { key: string; value: string; label: string; proteinAccession?: string }) => (
+                            <span>
+                                {option.label}
+                                {option.proteinAccession && (
+                                    <span style={{ color: 'var(--agr-text-secondary, #6c757d)', marginLeft: '0.4rem', fontSize: '0.85rem' }}>
+                                        ({option.proteinAccession})
+                                    </span>
+                                )}
+                            </span>
+                        )}
+                        options={transcriptSelection.transcriptList.map((r) => {
+                            const rawProteinAccession =
+                                (r.get('Protein_id') as string | undefined) ||
+                                (r.get('protein_id') as string | undefined);
+                            const proteinAccession =
+                                rawProteinAccession && rawProteinAccession !== 'None'
+                                    ? rawProteinAccession
+                                    : undefined;
+                            return {
+                                key: r.id(),
+                                value: r.id(),
+                                label: r.get('name') as string,
+                                proteinAccession,
+                            };
+                        })}
                     />
                     <label htmlFor={`transcripts-${props.index}`}>Transcripts</label>
                 </FloatLabel>

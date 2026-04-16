@@ -147,11 +147,22 @@ export function useTranscriptSelection(
                         console.log(`transcript ${transcript.get('name')} resulted in exons:`, exons);
                         console.log(`transcript ${transcript.get('name')} resulted in cds regions:`, cds_regions);
 
+                        const rawProteinAccession =
+                            (transcript.get('Protein_id') as string | undefined) ||
+                            (transcript.get('protein_id') as string | undefined) ||
+                            (feature['Protein_id'] as string | undefined) ||
+                            (feature['protein_id'] as string | undefined);
+                        const proteinAccession =
+                            rawProteinAccession && rawProteinAccession !== 'None'
+                                ? rawProteinAccession
+                                : undefined;
+
                         const transcriptInfo: TranscriptInfo = {
                             id: transcript.id(),
                             curie: (transcript.get('curie') as string) ?? '',
                             name: (transcript.get('name') as string) ?? '',
                             strand: feature.strand as FeatureStrand,
+                            proteinAccession,
                             exons: exons.map((e) => ({ refStart: e.refStart as number, refEnd: e.refEnd as number })),
                             cds_regions: cds_regions.map((e) => ({
                                 refStart: e.refStart as number,
