@@ -76,6 +76,9 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [showVariantLocations, setShowVariantLocations] = useState<boolean>(true);
     const [showProteinDomains, setShowProteinDomains] = useState<boolean>(false);
     const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
+    // Variant filters (SAB mockup slide 13)
+    const [variantTypeFilter, setVariantTypeFilter] = useState<Set<string>>(new Set());
+    const hasAutoZoomed = useRef(false);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
     const [referenceIndex, setReferenceIndex] = useState<number>(0); // Index of sequence to show at top
@@ -183,6 +186,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         for (const [_seqId, seqInfo] of Object.entries(props.seqInfoDict)) {
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
+                    if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
                     trackData.push({
                         accession: variant.variant_id,
                         start: variant.alignment_start_pos,
@@ -194,6 +198,21 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return trackData;
+    }, [props.seqInfoDict, variantTypeFilter]);
+
+    // Extract unique variant types for filter UI
+    const uniqueVariantTypes = useMemo(() => {
+        const types = new Set<string>();
+        for (const [, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const variant of seqInfo.embedded_variants) {
+                    if (variant.seq_substitution_type) {
+                        types.add(variant.seq_substitution_type);
+                    }
+                }
+            }
+        }
+        return Array.from(types).sort();
     }, [props.seqInfoDict]);
 
     // Update alignment features for visible sequences only
@@ -211,6 +230,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 for (const embedded_variant of props.seqInfoDict[originalId][
                     'embedded_variants'
                 ] || []) {
+                    if (variantTypeFilter.size > 0 && !variantTypeFilter.has(embedded_variant.seq_substitution_type)) continue;
                     // Add variant to alignment features (relative to visible window)
                     features.push({
                         residues: {
@@ -232,7 +252,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         }
 
         return features;
-    }, [visibleData, props.seqInfoDict, displayNameToId]);
+    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter]);
 
     // Calculate label width based on max name length
     const labelWidth = useMemo(() => {
@@ -257,6 +277,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
+                    if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
                     alleles.push({
                         seqName,
                         variantId: variant.variant_id,
@@ -270,7 +291,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return alleles;
-    }, [props.seqInfoDict]);
+    }, [props.seqInfoDict, variantTypeFilter]);
 
     // Calculate conservation scores for each position
     const conservationData = useMemo<LineData[]>(() => {
@@ -332,6 +353,26 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             setDisplayEnd(args.displayEnd);
         }
     }, []);
+
+    // Auto-zoom to include all variant positions on first load.
+    // Uses requestAnimationFrame to defer until AFTER Nightingale's initial
+    // onChange burst has settled — avoids the race condition where Nightingale
+    // overwrites our display range during its initialization cycle.
+    useEffect(() => {
+        if (hasAutoZoomed.current || allVariantsTrackData.length === 0 || seqLength === 0) return;
+        hasAutoZoomed.current = true;
+
+        requestAnimationFrame(() => {
+            // Center on first variant, keeping ~50-residue window for readability
+            const positions = allVariantsTrackData.map(v => v.start ?? 1);
+            const firstVariantPos = Math.min(...positions);
+            const windowSize = 50;
+            const halfWindow = Math.floor(windowSize / 2);
+
+            setDisplayStart(Math.max(1, firstVariantPos - halfWindow));
+            setDisplayEnd(Math.min(seqLength, firstVariantPos + halfWindow));
+        });
+    }, [allVariantsTrackData, seqLength]);
 
     const updateAlignmentColorScheme = useCallback((newColorScheme: string) => {
         setAlignmentColorScheme(newColorScheme);
@@ -584,6 +625,25 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         />
                         <span>Variant Locations</span>
                     </label>
+                    {showVariantLocations && uniqueVariantTypes.length > 1 && (
+                        <div className={styles.variantFilters}>
+                            <span className={styles.filterLabel}>Type:</span>
+                            {uniqueVariantTypes.map(type => (
+                                <label key={type} className={styles.filterChip}>
+                                    <input
+                                        type="checkbox"
+                                        checked={variantTypeFilter.has(type)}
+                                        onChange={() => {
+                                            const next = new Set(variantTypeFilter);
+                                            if (next.has(type)) next.delete(type); else next.add(type);
+                                            setVariantTypeFilter(next);
+                                        }}
+                                    />
+                                    <span>{type}</span>
+                                </label>
+                            ))}
+                        </div>
+                    )}
                     <label className={styles.overlayToggle}>
                         <input
                             type="checkbox"
