@@ -78,6 +78,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
     // Variant filters (SAB mockup slide 13)
     const [variantTypeFilter, setVariantTypeFilter] = useState<Set<string>>(new Set());
+    const [consequenceFilter, setConsequenceFilter] = useState<Set<string>>(new Set());
     const hasAutoZoomed = useRef(false);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
@@ -187,6 +188,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
+                    if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
                     trackData.push({
                         accession: variant.variant_id,
                         start: variant.alignment_start_pos,
@@ -198,7 +200,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return trackData;
-    }, [props.seqInfoDict, variantTypeFilter]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter]);
 
     // Extract unique variant types for filter UI
     const uniqueVariantTypes = useMemo(() => {
@@ -213,6 +215,23 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return Array.from(types).sort();
+    }, [props.seqInfoDict]);
+
+    // Extract unique molecular consequences for filter UI
+    const uniqueConsequences = useMemo(() => {
+        const consequences = new Set<string>();
+        for (const [, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const variant of seqInfo.embedded_variants) {
+                    if (variant.molecular_consequences) {
+                        for (const mc of variant.molecular_consequences) {
+                            consequences.add(mc);
+                        }
+                    }
+                }
+            }
+        }
+        return Array.from(consequences).sort();
     }, [props.seqInfoDict]);
 
     // Update alignment features for visible sequences only
@@ -231,6 +250,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     'embedded_variants'
                 ] || []) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(embedded_variant.seq_substitution_type)) continue;
+                    if (consequenceFilter.size > 0 && !(embedded_variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
                     // Add variant to alignment features (relative to visible window)
                     features.push({
                         residues: {
@@ -252,7 +272,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         }
 
         return features;
-    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter]);
+    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter, consequenceFilter]);
 
     // Calculate label width based on max name length
     const labelWidth = useMemo(() => {
@@ -278,6 +298,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
+                    if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
                     alleles.push({
                         seqName,
                         variantId: variant.variant_id,
@@ -291,7 +312,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return alleles;
-    }, [props.seqInfoDict, variantTypeFilter]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter]);
 
     // Calculate conservation scores for each position
     const conservationData = useMemo<LineData[]>(() => {
@@ -640,6 +661,25 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                         }}
                                     />
                                     <span>{type}</span>
+                                </label>
+                            ))}
+                        </div>
+                    )}
+                    {showVariantLocations && uniqueConsequences.length > 1 && (
+                        <div className={styles.variantFilters}>
+                            <span className={styles.filterLabel}>Consequence:</span>
+                            {uniqueConsequences.map(mc => (
+                                <label key={mc} className={styles.filterChip}>
+                                    <input
+                                        type="checkbox"
+                                        checked={consequenceFilter.has(mc)}
+                                        onChange={() => {
+                                            const next = new Set(consequenceFilter);
+                                            if (next.has(mc)) next.delete(mc); else next.add(mc);
+                                            setConsequenceFilter(next);
+                                        }}
+                                    />
+                                    <span>{mc.replace(/_/g, ' ')}</span>
                                 </label>
                             ))}
                         </div>
