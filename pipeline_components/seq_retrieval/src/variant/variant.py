@@ -84,6 +84,7 @@ class Variant:
         hgvs_protein: Optional[str] = None,
         hgvs_coding: Optional[str] = None,
         impact: Optional[str] = None,
+        gene_id: Optional[str] = None,
     ):
         """
         Initializes a Variant instance.
@@ -99,6 +100,7 @@ class Variant:
             hgvs_protein: HGVS protein nomenclature (e.g. NP_000316.2:p.Leu278Ser).
             hgvs_coding: HGVS coding nomenclature (e.g. NM_000325.6:c.833T>C).
             impact: Predicted impact of the variant (e.g. MODERATE).
+            gene_id: Alliance gene ID associated with the variant (e.g. WB:WBGene00000149).
         """
         # Ensure start <= end
         if start > end:
@@ -145,6 +147,7 @@ class Variant:
         self.hgvs_protein = hgvs_protein
         self.hgvs_coding = hgvs_coding
         self.impact = impact
+        self.gene_id = gene_id
 
     def affects_protein_sequence(self) -> bool:
         """
@@ -231,6 +234,7 @@ class Variant:
                 and self.hgvs_protein == other.hgvs_protein
                 and self.hgvs_coding == other.hgvs_coding
                 and self.impact == other.impact
+                and self.gene_id == other.gene_id
             ):
                 return True
         return False
@@ -283,6 +287,10 @@ class Variant:
             hgvs_coding = first.get("hgvsCodingNomenclature")
             impact = first.get("impact")
 
+        # Extract gene ID
+        gene_data = variant_data.get("gene", {})
+        gene_id = gene_data.get("id") if isinstance(gene_data, dict) else None
+
         return cls(
             variant_id=variant_id,
             seq_id=variant_data["location"]["chromosome"],
@@ -294,6 +302,7 @@ class Variant:
             hgvs_protein=hgvs_protein,
             hgvs_coding=hgvs_coding,
             impact=impact,
+            gene_id=gene_id,
         )
 
     def overlaps(self, other: "Variant|SeqRegion") -> bool:

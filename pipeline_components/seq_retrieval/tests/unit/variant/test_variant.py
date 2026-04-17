@@ -444,6 +444,19 @@ def test_variant_hgvs_defaults_to_none():
     assert v.impact is None
 
 
+def test_variant_stores_gene_id():
+    v = Variant(
+        variant_id="test:789",
+        seq_id="chr1",
+        start=100,
+        end=100,
+        genomic_ref_seq="A",
+        genomic_alt_seq="T",
+        gene_id="MGI:98297"
+    )
+    assert v.gene_id == "MGI:98297"
+
+
 def test_variants_overlap(
     wb_variant_yn10: Variant, wb_variant_yn30: Variant, wb_variant_yn32: Variant
 ) -> None:

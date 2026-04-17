@@ -53,6 +53,7 @@ def wb_variant_yn10() -> Variant:
         hgvs_protein="WB:CE04209:p.Arg174IlefsTer49",
         hgvs_coding="WB:C42D8.8a.1:c.519_1876del",
         impact="HIGH",
+        gene_id="WB:WBGene00000149",
     )
 
 

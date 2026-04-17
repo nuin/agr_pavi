@@ -25,5 +25,6 @@ export interface EmbeddedVariant {
     molecular_consequences?: string[],
     hgvs_protein?: string,
     hgvs_coding?: string,
-    impact?: string
+    impact?: string,
+    gene_id?: string
 }
