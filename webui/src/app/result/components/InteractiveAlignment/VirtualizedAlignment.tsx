@@ -23,7 +23,8 @@ import NightingaleLinegraphTrack, { LineData } from './nightingale/LinegraphTrac
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 
-import { SeqInfoDict } from './types';
+import { fetchVariantAnnotations } from './serverActions';
+import { SeqInfoDict, VariantAnnotationMap } from './types';
 import styles from './VirtualizedAlignment.module.css';
 
 // Constants for virtualization and display
@@ -83,6 +84,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
     const [referenceIndex, setReferenceIndex] = useState<number>(0); // Index of sequence to show at top
+    const [variantAnnotations, setVariantAnnotations] = useState<VariantAnnotationMap>({});
 
     // Get species abbreviation (e.g., "Homo sapiens" -> "H. sapiens")
     const getSpeciesAbbrev = (species: string): string => {
@@ -234,6 +236,44 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         return Array.from(consequences).sort();
     }, [props.seqInfoDict]);
 
+    // Extract unique gene IDs from variant data for annotation fetching
+    const geneIds = useMemo(() => {
+        const ids = new Set<string>();
+        for (const [, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const variant of seqInfo.embedded_variants) {
+                    if (variant.gene_id) {
+                        ids.add(variant.gene_id);
+                    }
+                }
+            }
+        }
+        return Array.from(ids);
+    }, [props.seqInfoDict]);
+
+    // Fetch disease/phenotype annotations when gene IDs are available
+    useEffect(() => {
+        if (geneIds.length === 0) return;
+
+        let cancelled = false;
+        (async () => {
+            const merged: VariantAnnotationMap = {};
+            for (const geneId of geneIds) {
+                try {
+                    const annotations = await fetchVariantAnnotations(geneId);
+                    Object.assign(merged, annotations);
+                } catch (e) {
+                    console.error(`Failed to fetch annotations for ${geneId}:`, e);
+                }
+            }
+            if (!cancelled) {
+                setVariantAnnotations(merged);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [geneIds]);
+
     // Update alignment features for visible sequences only
     const alignmentFeatures = useMemo(() => {
         const features: MSAFeaturesProp = [];
@@ -295,6 +335,10 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             hgvsProtein: string | null;
             impact: string | null;
             consequences: string[];
+            hasDisease: boolean;
+            hasPhenotype: boolean;
+            alleleSymbol: string | null;
+            alleleId: string | null;
         }> = [];
 
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
@@ -313,12 +357,16 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         hgvsProtein: variant.hgvs_protein || null,
                         impact: variant.impact || null,
                         consequences: variant.molecular_consequences || [],
+                        hasDisease: variantAnnotations[variant.variant_id]?.hasDisease || false,
+                        hasPhenotype: variantAnnotations[variant.variant_id]?.hasPhenotype || false,
+                        alleleSymbol: variantAnnotations[variant.variant_id]?.alleleSymbol || null,
+                        alleleId: variantAnnotations[variant.variant_id]?.alleleId || null,
                     });
                 }
             }
         }
         return alleles;
-    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, variantAnnotations]);
 
     // Calculate conservation scores for each position
     const conservationData = useMemo<LineData[]>(() => {
@@ -629,6 +677,16 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                                 {mc.replace(/_/g, ' ')}
                                             </span>
                                         ))}
+                                    </div>
+                                )}
+                                {(allele.hasDisease || allele.hasPhenotype) && (
+                                    <div className={styles.variantAnnotationBadges}>
+                                        {allele.hasDisease && (
+                                            <span className={styles.diseaseBadge}>Disease</span>
+                                        )}
+                                        {allele.hasPhenotype && (
+                                            <span className={styles.phenotypeBadge}>Phenotype</span>
+                                        )}
                                     </div>
                                 )}
                             </div>
