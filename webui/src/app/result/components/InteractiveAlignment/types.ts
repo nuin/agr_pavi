@@ -28,3 +28,12 @@ export interface EmbeddedVariant {
     impact?: string,
     gene_id?: string
 }
+
+export interface VariantAnnotation {
+    alleleId: string;
+    alleleSymbol: string;
+    hasDisease: boolean;
+    hasPhenotype: boolean;
+}
+
+export type VariantAnnotationMap = Record<string, VariantAnnotation>;
