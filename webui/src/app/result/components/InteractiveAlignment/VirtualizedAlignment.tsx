@@ -331,7 +331,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             altSeq: string;
             position: string;
             type: string;
-            alignmentPos: number;
+            alignmentPos: number | null;
             hgvsProtein: string | null;
             impact: string | null;
             consequences: string[];
@@ -339,6 +339,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             hasPhenotype: boolean;
             alleleSymbol: string | null;
             alleleId: string | null;
+            isNonCoding: boolean;
         }> = [];
 
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
@@ -361,6 +362,31 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         hasPhenotype: variantAnnotations[variant.variant_id]?.hasPhenotype || false,
                         alleleSymbol: variantAnnotations[variant.variant_id]?.alleleSymbol || null,
                         alleleId: variantAnnotations[variant.variant_id]?.alleleId || null,
+                        isNonCoding: false,
+                    });
+                }
+            }
+            // Include non-coding variants (UTR, intronic) — shown in info cards but not on alignment track
+            if (seqInfo.non_coding_variants) {
+                for (const variant of seqInfo.non_coding_variants) {
+                    if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
+                    if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
+                    alleles.push({
+                        seqName,
+                        variantId: variant.variant_id,
+                        refSeq: variant.genomic_ref_seq || '-',
+                        altSeq: variant.genomic_alt_seq || '-',
+                        position: `${variant.genomic_seq_id}:${variant.genomic_start_pos}-${variant.genomic_end_pos}`,
+                        type: variant.seq_substitution_type,
+                        alignmentPos: null,
+                        hgvsProtein: variant.hgvs_protein || null,
+                        impact: variant.impact || null,
+                        consequences: variant.molecular_consequences || [],
+                        hasDisease: variantAnnotations[variant.variant_id]?.hasDisease || false,
+                        hasPhenotype: variantAnnotations[variant.variant_id]?.hasPhenotype || false,
+                        alleleSymbol: variantAnnotations[variant.variant_id]?.alleleSymbol || null,
+                        alleleId: variantAnnotations[variant.variant_id]?.alleleId || null,
+                        isNonCoding: true,
                     });
                 }
             }
@@ -641,15 +667,16 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         {alleleInfo.map((allele, idx) => (
                             <div
                                 key={idx}
-                                className={`${styles.variantCard} ${styles.variantCardClickable}`}
+                                className={`${styles.variantCard} ${!allele.isNonCoding ? styles.variantCardClickable : styles.variantCardNonCoding}`}
                                 onClick={() => {
+                                    if (allele.isNonCoding || allele.alignmentPos === null) return;
                                     const windowSize = Math.max(20, displayEnd - displayStart);
                                     const newStart = Math.max(1, allele.alignmentPos - Math.floor(windowSize / 2));
                                     const newEnd = Math.min(seqLength, newStart + windowSize);
                                     setDisplayStart(newStart);
                                     setDisplayEnd(newEnd);
                                 }}
-                                title={`Click to jump to alignment position ${allele.alignmentPos}`}
+                                title={allele.isNonCoding ? 'Non-coding variant — does not affect protein sequence' : `Click to jump to alignment position ${allele.alignmentPos}`}
                             >
                                 <div className={styles.variantId}>
                                     <span className={styles.variantNumber}>{idx + 1}</span>
@@ -665,7 +692,11 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                 </div>
                                 <div className={styles.variantPosition}>
                                     {allele.position}
-                                    <span className={styles.variantAlnPos}>alignment pos {allele.alignmentPos}</span>
+                                    {allele.isNonCoding ? (
+                                        <span className={styles.nonCodingLabel}>non-coding</span>
+                                    ) : (
+                                        <span className={styles.variantAlnPos}>alignment pos {allele.alignmentPos}</span>
+                                    )}
                                 </div>
                                 {allele.hgvsProtein && (
                                     <div className={styles.variantHgvs}>{allele.hgvsProtein}</div>

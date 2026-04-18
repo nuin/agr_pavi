@@ -508,11 +508,15 @@ def main(
                     f"Failed to retrieve alternative protein sequence for TranslatedSeqRegion {fullRegion} with variants ({variant_ids}): {e}"
                 )
                 error_msg = exception_description(e)
-                alt_info = SeqInfo(error=error_msg, requested_variant_ids=list(variant_ids), species=species)
+                alt_info = SeqInfo(error=error_msg, requested_variant_ids=list(variant_ids),
+                                   non_coding_variants=non_coding_variants if non_coding_variants else None,
+                                   species=species)
             else:
                 alt_seq = seq_info.sequence
                 alt_info = SeqInfo(embedded_variants=seq_info.embedded_variants,
-                                   requested_variant_ids=list(variant_ids), species=species)
+                                   requested_variant_ids=list(variant_ids),
+                                   non_coding_variants=non_coding_variants if non_coding_variants else None,
+                                   species=species)
 
             if alt_seq == "":
                 logger.error(

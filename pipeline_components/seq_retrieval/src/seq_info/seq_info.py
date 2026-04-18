@@ -27,6 +27,8 @@ class SeqInfo:
     """An error message, if any occured during sequence retrieval."""
     species: Optional[str]
     """The species name for this sequence."""
+    non_coding_variants: Optional[list]
+    """Variants that were requested but filtered out because they don't affect the protein sequence (e.g., UTR, intronic)."""
 
     def __init__(
         self,
@@ -37,6 +39,7 @@ class SeqInfo:
         requested_variant_ids: Optional[list[str]] = None,
         error: Optional[str] = None,
         species: Optional[str] = None,
+        non_coding_variants: Optional[list] = None,
     ):
         if sequence is not None:
             self.sequence = sequence
@@ -52,6 +55,9 @@ class SeqInfo:
 
         if species is not None:
             self.species = species
+
+        if non_coding_variants is not None:
+            self.non_coding_variants = non_coding_variants
 
     @classmethod
     def from_dict(cls, seq_info_dict: dict[str, Any]) -> "SeqInfo":

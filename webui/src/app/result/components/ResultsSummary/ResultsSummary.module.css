@@ -160,7 +160,8 @@
 }
 
 .qualityFill.good {
-    background: var(--agr-success-light);
+    background: var(--agr-success);
+    opacity: 0.7;
 }
 
 .qualityFill.moderate {
