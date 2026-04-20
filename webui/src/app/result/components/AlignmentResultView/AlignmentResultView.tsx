@@ -172,16 +172,63 @@ export const AlignmentResultView: FunctionComponent<AlignmentResultViewProps> = 
                 <h1>Alignment Results</h1>
             </div>
 
-            {/* Results Summary Panel */}
-            <ResultsSummary
-                jobId={props.uuidStr}
-                alignmentResult={alignmentResult}
-                seqInfoDict={alignmentSeqInfo}
-                isLoading={isLoading}
-                completedAt={loadedAt}
-                onDownload={alignmentResult ? handleDownload : undefined}
-                onShare={handleShare}
-            />
+            {/* Results Summary Panel — collapsible with inline stats */}
+            {(() => {
+                const seqCount = alignmentSeqInfo ? Object.keys(alignmentSeqInfo).length : 0;
+                const alnLength = alignmentResult ? (alignmentResult.split('\n').find(l => l && !l.startsWith('>'))?.length || 0) : 0;
+                let variantCount = 0;
+                if (alignmentSeqInfo) {
+                    for (const info of Object.values(alignmentSeqInfo)) {
+                        variantCount += info.embedded_variants?.length || 0;
+                    }
+                }
+                return (
+                    <details open={false} style={{ marginBottom: '0.75rem' }}>
+                        <summary style={{
+                            cursor: 'pointer',
+                            padding: '0.75rem 1rem',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            color: 'var(--agr-gray-800)',
+                            userSelect: 'none',
+                            listStyle: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            background: 'linear-gradient(135deg, #f0fdf4 0%, #f0f9ff 100%)',
+                            border: '1px solid var(--agr-gray-200)',
+                            borderRadius: '8px',
+                            WebkitAppearance: 'none',
+                        }}>
+                            <i className="pi pi-check-circle" style={{ color: 'var(--agr-success)', fontSize: '1.1rem' }} />
+                            <span>Alignment Results</span>
+                            {seqCount > 0 && (
+                                <span style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--agr-gray-600)' }}>
+                                    <span>{seqCount} sequences</span>
+                                    <span style={{ color: 'var(--agr-gray-300)' }}>|</span>
+                                    <span>{alnLength} aa</span>
+                                    {variantCount > 0 && (<>
+                                        <span style={{ color: 'var(--agr-gray-300)' }}>|</span>
+                                        <span>{variantCount} variants</span>
+                                    </>)}
+                                </span>
+                            )}
+                            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--agr-gray-400)' }}>
+                                Click to expand
+                            </span>
+                        </summary>
+                        <ResultsSummary
+                            jobId={props.uuidStr}
+                            alignmentResult={alignmentResult}
+                            seqInfoDict={alignmentSeqInfo}
+                            isLoading={isLoading}
+                            completedAt={loadedAt}
+                            onDownload={alignmentResult ? handleDownload : undefined}
+                            onShare={handleShare}
+                        />
+                    </details>
+                );
+            })()}
 
             {seqFailures && seqFailures.size > 0 && (
                 <div className="agr-card agr-card-warning">

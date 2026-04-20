@@ -77,6 +77,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [showVariantLocations, setShowVariantLocations] = useState<boolean>(true);
     const [showProteinDomains, setShowProteinDomains] = useState<boolean>(false);
     const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
+    const [variantPanelOpen, setVariantPanelOpen] = useState<boolean>(false);
     // Variant filters (SAB mockup slide 13)
     const [variantTypeFilter, setVariantTypeFilter] = useState<Set<string>>(new Set());
     const [consequenceFilter, setConsequenceFilter] = useState<Set<string>>(new Set());
@@ -651,19 +652,24 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             aria-label="Alignment viewer. Use arrow keys to pan, +/- to zoom, Home/End to jump to start/end"
             className={styles.alignmentContainer}
         >
-            {/* Variant Information Panel */}
+            {/* Variant Information Panel — collapsible */}
             {alleleInfo.length > 0 && (
                 <div className={styles.variantPanel}>
-                    <div className={styles.variantPanelHeader}>
+                    <div
+                        className={styles.variantPanelHeader}
+                        onClick={() => setVariantPanelOpen(prev => !prev)}
+                        style={{ cursor: 'pointer' }}
+                    >
                         <div className={styles.variantIcon}>
-                            <i className="pi pi-bolt" aria-hidden="true" />
+                            <i className={`pi ${variantPanelOpen ? 'pi-chevron-down' : 'pi-chevron-right'}`} aria-hidden="true" />
                         </div>
                         <span className={styles.variantTitle}>Variant Information</span>
                         <span className={styles.variantCount}>
                             {alleleInfo.length} variant{alleleInfo.length !== 1 ? 's' : ''}
                         </span>
                     </div>
-                    <div className={styles.variantGrid}>
+                    {variantPanelOpen && (<div className={styles.variantGrid}>
+
                         {alleleInfo.map((allele, idx) => (
                             <div
                                 key={idx}
@@ -722,7 +728,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                 )}
                             </div>
                         ))}
-                    </div>
+                    </div>)}
                 </div>
             )}
 
