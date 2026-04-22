@@ -81,6 +81,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     // Variant filters (SAB mockup slide 13)
     const [variantTypeFilter, setVariantTypeFilter] = useState<Set<string>>(new Set());
     const [consequenceFilter, setConsequenceFilter] = useState<Set<string>>(new Set());
+    const [filterByDisease, setFilterByDisease] = useState<boolean>(false);
+    const [filterByPhenotype, setFilterByPhenotype] = useState<boolean>(false);
     const hasAutoZoomed = useRef(false);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(600);
@@ -192,6 +194,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
                     if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
+                    if (filterByDisease && !variantAnnotations[variant.variant_id]?.hasDisease) continue;
+                    if (filterByPhenotype && !variantAnnotations[variant.variant_id]?.hasPhenotype) continue;
                     trackData.push({
                         accession: variant.variant_id,
                         start: variant.alignment_start_pos,
@@ -203,7 +207,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return trackData;
-    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations]);
 
     // Extract unique variant types for filter UI
     const uniqueVariantTypes = useMemo(() => {
@@ -292,6 +296,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 ] || []) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(embedded_variant.seq_substitution_type)) continue;
                     if (consequenceFilter.size > 0 && !(embedded_variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
+                    if (filterByDisease && !variantAnnotations[embedded_variant.variant_id]?.hasDisease) continue;
+                    if (filterByPhenotype && !variantAnnotations[embedded_variant.variant_id]?.hasPhenotype) continue;
                     // Add variant to alignment features (relative to visible window)
                     features.push({
                         residues: {
@@ -313,7 +319,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         }
 
         return features;
-    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter, consequenceFilter]);
+    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations]);
 
     // Calculate label width based on max name length
     const labelWidth = useMemo(() => {
@@ -348,6 +354,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
                     if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
+                    if (filterByDisease && !variantAnnotations[variant.variant_id]?.hasDisease) continue;
+                    if (filterByPhenotype && !variantAnnotations[variant.variant_id]?.hasPhenotype) continue;
                     alleles.push({
                         seqName,
                         variantId: variant.variant_id,
@@ -372,6 +380,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 for (const variant of seqInfo.non_coding_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
                     if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
+                    if (filterByDisease && !variantAnnotations[variant.variant_id]?.hasDisease) continue;
+                    if (filterByPhenotype && !variantAnnotations[variant.variant_id]?.hasPhenotype) continue;
                     alleles.push({
                         seqName,
                         variantId: variant.variant_id,
@@ -393,7 +403,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return alleles;
-    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, variantAnnotations]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations]);
 
     // Calculate conservation scores for each position
     const conservationData = useMemo<LineData[]>(() => {
@@ -795,6 +805,27 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                     <span>{mc.replace(/_/g, ' ')}</span>
                                 </label>
                             ))}
+                        </div>
+                    )}
+                    {showVariantLocations && Object.keys(variantAnnotations).length > 0 && (
+                        <div className={styles.variantFilters}>
+                            <span className={styles.filterLabel}>Annotations:</span>
+                            <label className={styles.filterChip}>
+                                <input
+                                    type="checkbox"
+                                    checked={filterByDisease}
+                                    onChange={(e) => setFilterByDisease(e.target.checked)}
+                                />
+                                <span>Disease</span>
+                            </label>
+                            <label className={styles.filterChip}>
+                                <input
+                                    type="checkbox"
+                                    checked={filterByPhenotype}
+                                    onChange={(e) => setFilterByPhenotype(e.target.checked)}
+                                />
+                                <span>Phenotype</span>
+                            </label>
                         </div>
                     )}
                     <label className={styles.overlayToggle}>
