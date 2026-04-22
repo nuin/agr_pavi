@@ -420,6 +420,31 @@
   flex-shrink: 0;
 }
 
+.impactDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+}
+
+.impactHIGH {
+  background: #dc2626;
+}
+
+.impactMODERATE {
+  background: #ea580c;
+}
+
+.impactLOW {
+  background: #ca8a04;
+}
+
+.impactMODIFIER {
+  background: #16a34a;
+}
+
 .variantDetails {
   display: flex;
   align-items: center;

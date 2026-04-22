@@ -696,6 +696,10 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                             >
                                 <div className={styles.variantId}>
                                     <span className={styles.variantNumber}>{idx + 1}</span>
+                                    {allele.impact && (
+                                        <span className={`${styles.impactDot} ${styles[`impact${allele.impact}`]}`}
+                                              title={`Impact: ${allele.impact.toLowerCase()}`} />
+                                    )}
                                     {allele.variantId}
                                 </div>
                                 <div className={styles.variantDetails}>
