@@ -26,6 +26,8 @@ import { Button } from 'primereact/button';
 import { fetchVariantAnnotations } from './serverActions';
 import { SeqInfoDict, VariantAnnotationMap } from './types';
 import styles from './VirtualizedAlignment.module.css';
+import { PositionInfoPanel } from '../PositionInfoPanel/PositionInfoPanel';
+import type { PositionData } from '../PositionInfoPanel/PositionInfoPanel';
 
 // Constants for virtualization and display
 const SEQUENCE_HEIGHT = 40; // Height per sequence in pixels (larger for readability)
@@ -88,6 +90,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [containerHeight, setContainerHeight] = useState(600);
     const [referenceIndex, setReferenceIndex] = useState<number>(0); // Index of sequence to show at top
     const [variantAnnotations, setVariantAnnotations] = useState<VariantAnnotationMap>({});
+    const [positionPanelData, setPositionPanelData] = useState<PositionData | null>(null);
+    const [showPositionPanel, setShowPositionPanel] = useState(false);
 
     // Get species abbreviation (e.g., "Homo sapiens" -> "H. sapiens")
     const getSpeciesAbbrev = (species: string): string => {
@@ -613,6 +617,88 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         }
     }, [displayStart, displayEnd, seqLength, scrollTop]);
 
+    // Handle clicks on the MSA area to show residue detail panel
+    const handleAlignmentClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const msaContainer = e.currentTarget;
+        const rect = msaContainer.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+
+        // Calculate which alignment column was clicked
+        const dataAreaX = clickX - labelWidth;
+        if (dataAreaX < 0) return; // Clicked on labels, ignore
+
+        const dataAreaWidth = rect.width - labelWidth - 5; // 5px right margin
+        const viewSpan = displayEnd - displayStart + 1;
+        const column = Math.floor(displayStart + (dataAreaX / dataAreaWidth) * viewSpan);
+
+        if (column < 1 || column > seqLength) return;
+
+        // Compute residue data at this column (0-based index for sequence access)
+        const colIndex = column - 1;
+        const residues: Array<{ position: number; residue: string; sequenceId: string; sequenceName?: string }> = [];
+        let gapCount = 0;
+        const residueCounts: Map<string, number> = new Map();
+
+        for (const seq of orderedAlignmentData) {
+            const residue = seq.sequence[colIndex] || '-';
+            const seqId = displayNameToId.get(seq.name) || seq.name;
+            residues.push({
+                position: column,
+                residue,
+                sequenceId: seqId,
+                sequenceName: seq.name,
+            });
+
+            if (residue === '-' || residue === '.') {
+                gapCount++;
+            } else {
+                residueCounts.set(residue, (residueCounts.get(residue) || 0) + 1);
+            }
+        }
+
+        // Find consensus residue (most common non-gap)
+        let consensusResidue: string | undefined;
+        let maxCount = 0;
+        for (const [r, count] of residueCounts) {
+            if (count > maxCount) {
+                maxCount = count;
+                consensusResidue = r;
+            }
+        }
+
+        // Conservation: fraction of non-gap residues matching consensus
+        const nonGapCount = orderedAlignmentData.length - gapCount;
+        const conservation = nonGapCount > 0 ? maxCount / nonGapCount : 0;
+
+        // Find variants at this column position
+        const variants: Array<{ id: string; hgvs?: string; consequence?: string; impact?: 'HIGH' | 'MODERATE' | 'LOW' | 'MODIFIER' }> = [];
+        for (const [, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (seqInfo.embedded_variants) {
+                for (const v of seqInfo.embedded_variants) {
+                    if (v.alignment_start_pos <= column && column <= v.alignment_end_pos) {
+                        variants.push({
+                            id: v.variant_id,
+                            hgvs: v.hgvs_protein || undefined,
+                            consequence: v.molecular_consequences?.[0]?.replace(/_/g, ' '),
+                            impact: v.impact as 'HIGH' | 'MODERATE' | 'LOW' | 'MODIFIER' | undefined,
+                        });
+                    }
+                }
+            }
+        }
+
+        setPositionPanelData({
+            position: column,
+            residues,
+            conservation,
+            gapCount,
+            totalSequences: orderedAlignmentData.length,
+            variants: variants.length > 0 ? variants : undefined,
+            consensusResidue,
+        });
+        setShowPositionPanel(true);
+    }, [orderedAlignmentData, displayNameToId, displayStart, displayEnd, labelWidth, seqLength, props.seqInfoDict]);
+
     // Update container height on mount and resize
     useEffect(() => {
         const updateHeight = () => {
@@ -978,7 +1064,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     {/* MSA container */}
                     <div className={styles.trackContainer}>
                         <div className={styles.trackLabel}>Sequence Alignment</div>
-                        <div className={styles.msaContainer}>
+                        <div className={styles.msaContainer} onClick={handleAlignmentClick}>
                             {orderedAlignmentData.length === 0 || seqLength === 0 ? (
                                 <div className={styles.loadingState}>
                                     <i className="pi pi-spin pi-spinner" aria-hidden="true" />
@@ -1056,6 +1142,12 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     </div>
                 </NightingaleManagerComponent>
             </div>
+
+            <PositionInfoPanel
+                data={positionPanelData}
+                isVisible={showPositionPanel}
+                onClose={() => setShowPositionPanel(false)}
+            />
         </div>
     );
 };
