@@ -67,6 +67,9 @@ export const Header: React.FC = () => {
                     <Link href="/submit" onClick={() => setMobileMenuOpen(false)}>
                         Submit Job
                     </Link>
+                    <Link href="/submit-ortholog" onClick={() => setMobileMenuOpen(false)}>
+                        Ortholog Alignment
+                    </Link>
                     <Link href="/jobs" onClick={() => setMobileMenuOpen(false)}>
                         My Jobs
                     </Link>
