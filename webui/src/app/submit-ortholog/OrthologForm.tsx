@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, createRef } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { AutoComplete, AutoCompleteCompleteEvent } from 'primereact/autocomplete';
+import { AutoComplete, AutoCompleteState } from 'primereact/autocomplete';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 
-import { fetchGeneInfo, fetchGeneSuggestionsAutocomplete } from '@/app/submit/components/AlignmentEntry/serverActions';
-import { GeneInfo, GeneSuggestion } from '@/app/submit/components/AlignmentEntry/types';
+import { useGeneSearch } from '@/hooks';
+import { fetchGeneInfo } from '@/app/submit/components/AlignmentEntry/serverActions';
+import { GeneInfo } from '@/app/submit/components/AlignmentEntry/types';
 import { submitNewPipelineJob } from '@/app/submit/components/JobSubmitForm/serverActions';
 import { JobSumbissionPayloadRecord } from '@/app/submit/components/JobSubmitForm/types';
 
@@ -16,7 +17,8 @@ import { fetchOrthologs, OrthologInfo } from './serverActions';
 
 import { getSpecies, getSingleGenomeLocation } from 'https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib/utils.js';
 import { fetchTranscripts } from 'generic-sequence-panel';
-import NCListFeature from '@gmod/nclist';
+import NCListFeature from 'generic-sequence-panel/dist/NCListFeature';
+import { dedupe, revlist } from '@/app/submit/components/AlignmentEntry/utils';
 
 import styles from './page.module.css';
 
@@ -44,10 +46,10 @@ type SubmitPhase = 'idle' | 'searching' | 'fetching-genes' | 'fetching-transcrip
 export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
     const router = useRouter();
 
-    // Gene search state
-    const [geneQuery, setGeneQuery] = useState<string>('');
-    const [suggestions, setSuggestions] = useState<GeneSuggestion[]>([]);
-    const [selectedGene, setSelectedGene] = useState<GeneInfo | null>(null);
+    // Gene search — reuse the same hook as /submit
+    const geneFieldRef = createRef<AutoComplete>();
+    const geneFieldStateRef = createRef<AutoCompleteState>();
+    const geneSearch = useGeneSearch({}, geneFieldRef, geneFieldStateRef);
 
     // Ortholog state
     const [orthologs, setOrthologs] = useState<OrthologEntry[]>([]);
@@ -60,34 +62,14 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    // Gene autocomplete
-    const searchGenes = useCallback(async (event: AutoCompleteCompleteEvent) => {
-        const query = event.query.trim();
-        if (query.length < 2) return;
-        const results = await fetchGeneSuggestionsAutocomplete(query);
-        setSuggestions(results);
-    }, []);
-
-    const onGeneSelect = useCallback(async (value: GeneSuggestion | string) => {
-        const geneId = typeof value === 'string' ? value : value.id;
-        if (!geneId) return;
-
-        const geneInfo = await fetchGeneInfo(geneId);
-        if (geneInfo) {
-            setSelectedGene(geneInfo);
-            setOrthologs([]);
-            setError(null);
-        }
-    }, []);
-
     // Find orthologs
     const handleFindOrthologs = useCallback(async () => {
-        if (!selectedGene) return;
+        if (!geneSearch.gene) return;
         setOrthologsLoading(true);
         setError(null);
 
         try {
-            const result = await fetchOrthologs(selectedGene.id);
+            const result = await fetchOrthologs(geneSearch.gene!.id);
             setSourceGene(result.sourceGene);
             setOrthologs(result.orthologs.map(o => ({
                 ...o,
@@ -98,7 +80,7 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
         } finally {
             setOrthologsLoading(false);
         }
-    }, [selectedGene]);
+    }, [geneSearch.gene]);
 
     const toggleOrtholog = useCallback((geneId: string) => {
         setOrthologs(prev => prev.map(o =>
@@ -121,6 +103,29 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
     }, []);
 
     const selectedCount = orthologs.filter(o => o.selected).length + (includeSource ? 1 : 0);
+
+    // Convert JBrowse relative positions to reference positions
+    // Exact copy of the logic from useTranscriptSelection.ts
+    function jBrowseSubfeatureRelToRefPos(
+        subfeatureList: Array<Record<string, any>>,
+        featureStrand: number,
+        parentRefStart: number,
+        parentRefEnd: number
+    ): Array<Record<string, any>> {
+        return subfeatureList.map((subfeat) => {
+            const newSubfeat = { ...subfeat };
+            const start = subfeat['start'] as number;
+            const end = subfeat['end'] as number;
+            if (featureStrand === -1) {
+                newSubfeat['refStart'] = parentRefEnd - start;
+                newSubfeat['refEnd'] = parentRefEnd - end + 1;
+            } else {
+                newSubfeat['refStart'] = parentRefStart + start + 1;
+                newSubfeat['refEnd'] = parentRefStart + end;
+            }
+            return newSubfeat;
+        });
+    }
 
     // Fetch transcript data for a single gene and build payload record
     async function buildPayloadForGene(gene: GeneInfo, index: number): Promise<JobSumbissionPayloadRecord | null> {
@@ -146,9 +151,9 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                 return null;
             }
 
-            // Pick first transcript
+            // Pick first transcript (same as useTranscriptSelection)
             const transcript = transcripts[0];
-            const feature: any = new (NCListFeature as any)(transcript).toJSON();
+            const feature: any = new NCListFeature(transcript).toJSON();
             const { subfeatures = [] } = feature;
 
             const children = subfeatures
@@ -159,38 +164,20 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                     end: sub.end - feature.start,
                 }));
 
-            let exons = children.filter((sub: { type: string }) => sub.type === 'exon');
-            let cds_regions = children.filter((sub: { type: string }) => sub.type === 'CDS');
+            let exons: any[] = dedupe(children.filter((sub: { type: string }) => sub.type === 'exon'));
+            let cds_regions: any[] = dedupe(children.filter((sub: { type: string }) => sub.type === 'CDS'));
 
-            // Reverse for minus strand
-            const transcriptLength = transcript.get('end') - transcript.get('start');
+            const transcript_length = transcript.get('end') - transcript.get('start');
             if (feature.strand === -1) {
-                exons = exons.map((e: any) => ({
-                    ...e,
-                    start: transcriptLength - e.end,
-                    end: transcriptLength - e.start,
-                }));
-                cds_regions = cds_regions.map((c: any) => ({
-                    ...c,
-                    start: transcriptLength - c.end,
-                    end: transcriptLength - c.start,
-                }));
+                exons = revlist(exons, transcript_length);
+                cds_regions = revlist(cds_regions, transcript_length);
             }
 
-            // Convert relative to absolute positions
-            const refStart = transcript.get('start');
-            const refEnd = transcript.get('end');
-            const toAbsolute = (sub: any) => {
-                if (feature.strand === -1) {
-                    return { refStart: refEnd - sub.end, refEnd: refEnd - sub.start, phase: sub.phase };
-                }
-                return { refStart: refStart + sub.start, refEnd: refStart + sub.end, phase: sub.phase };
-            };
+            // Convert relative to absolute positions (exact same as useTranscriptSelection)
+            exons = jBrowseSubfeatureRelToRefPos(exons, feature.strand, transcript.get('start'), transcript.get('end'));
+            cds_regions = jBrowseSubfeatureRelToRefPos(cds_regions, feature.strand, transcript.get('start'), transcript.get('end'));
 
-            const absExons = exons.map(toAbsolute);
-            const absCds = cds_regions.map(toAbsolute);
-
-            if (absCds.length === 0) {
+            if (cds_regions.length === 0) {
                 console.warn(`No CDS regions for ${gene.symbol} — skipping`);
                 return null;
             }
@@ -202,14 +189,17 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                 base_seq_name: `${gene.symbol}_${transcriptName}`,
                 seq_id: genomeLocation['chromosome'],
                 seq_strand: feature.strand === -1 ? '-' : '+',
-                exon_seq_regions: absExons.map((e: any) => ({ start: e.refStart, end: e.refEnd })),
-                cds_seq_regions: absCds.map((c: any) => ({ start: c.refStart, end: c.refEnd, frame: c.phase ?? 0 })),
+                exon_seq_regions: exons.map((e: any) => ({ start: e.refStart, end: e.refEnd })),
+                cds_seq_regions: cds_regions.map((c: any) => ({ start: c.refStart, end: c.refEnd, frame: c.phase ?? 0 })),
                 fasta_file_url: speciesConfig.jBrowsefastaurl,
                 variant_ids: [],
+                alt_seq_name_suffix: '_alt',
                 species: gene.species.name,
             };
-        } catch (e) {
-            console.error(`Failed to build payload for ${gene.symbol}:`, e);
+        } catch (e: any) {
+            const msg = e?.message || String(e);
+            console.error(`Failed to build payload for ${gene.symbol} (${gene.id}, taxon=${gene.species?.taxonId}): ${msg}`);
+            (buildPayloadForGene as any).lastError = `${gene.symbol}: ${msg}`;
             return null;
         }
     }
@@ -249,14 +239,20 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
             // Fetch transcripts and build payloads
             setPhase('fetching-transcripts');
             const payloads: JobSumbissionPayloadRecord[] = [];
+            const failures: string[] = [];
             for (let i = 0; i < geneInfos.length; i++) {
                 setStatusMessage(`Fetching transcripts for ${geneInfos[i].symbol} (${i + 1}/${geneInfos.length})...`);
                 const record = await buildPayloadForGene(geneInfos[i], i);
-                if (record) payloads.push(record);
+                if (record) {
+                    payloads.push(record);
+                } else {
+                    const lastErr = (buildPayloadForGene as any).lastError || geneInfos[i].symbol;
+                    failures.push(lastErr);
+                }
             }
 
             if (payloads.length < 2) {
-                setError(`Only ${payloads.length} gene(s) had valid transcripts. Need at least 2.`);
+                setError(`Only ${payloads.length} gene(s) had valid transcripts. Need at least 2. Failed: ${failures.join(', ')}`);
                 setPhase('error');
                 return;
             }
@@ -274,88 +270,106 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
     }, [orthologs, includeSource, sourceGene, router, agrjBrowseDataRelease]);
 
     return (
-        <div className={styles.container}>
-            <p className={styles.subtitle}>
-                Enter a gene to find orthologs across model organisms and submit a multi-species protein alignment.
-            </p>
-
-            {/* Gene Search */}
-            <div className={styles.section}>
-                <div className={styles.sectionLabel}>Gene</div>
-                <div className={styles.geneSearchRow}>
-                    <AutoComplete
-                        value={geneQuery}
-                        suggestions={suggestions}
-                        completeMethod={searchGenes}
-                        field="displayName"
-                        onChange={(e) => setGeneQuery(typeof e.value === 'string' ? e.value : e.value?.displayName || '')}
-                        onSelect={(e) => onGeneSelect(e.value)}
-                        placeholder="Search for a gene (e.g., SOD1, TP53, PITX2)"
-                        style={{ width: '100%' }}
-                    />
-                    <Button
-                        label="Find Orthologs"
-                        icon="pi pi-search"
-                        onClick={handleFindOrthologs}
-                        disabled={!selectedGene || orthologsLoading}
-                        loading={orthologsLoading}
-                    />
+        <div className="agr-page-section">
+            {/* Gene Search Card */}
+            <div className="agr-card">
+                <div className="agr-card-header">
+                    <h2>Focus Gene</h2>
                 </div>
-                {selectedGene && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--agr-gray-500)' }}>
-                        Selected: <strong>{selectedGene.symbol}</strong> ({selectedGene.species?.name}) &mdash; {selectedGene.id}
+                <div className="agr-card-body">
+                    <div className="field">
+                        <label htmlFor="gene-search" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>
+                            Search for a gene to find orthologs across model organisms
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <AutoComplete
+                                id="gene-search"
+                                ref={geneFieldRef}
+                                value={geneSearch.geneQuery}
+                                suggestions={geneSearch.geneSuggestionList}
+                                completeMethod={(e) => geneSearch.searchGene(e.query)}
+                                field="displayName"
+                                delay={700}
+                                onChange={(e) => geneSearch.setGeneQuery(e.value)}
+                                onSelect={(e) => {
+                                    geneSearch.setSelectedGeneSuggestion(e.value);
+                                    geneSearch.setGeneQuery(e.value);
+                                    setOrthologs([]);
+                                    setError(null);
+                                }}
+                                onHide={() => geneSearch.autoSelectSingleGeneSuggestion()}
+                                onClear={() => {
+                                    geneSearch.setSelectedGeneSuggestion(undefined);
+                                    geneSearch.clearGeneSuggestionList();
+                                }}
+                                placeholder="e.g., SOD1, TP53, PITX2"
+                                style={{ flex: 1 }}
+                            />
+                            <Button
+                                label="Find Orthologs"
+                                icon="pi pi-search"
+                                onClick={handleFindOrthologs}
+                                disabled={!geneSearch.gene || orthologsLoading}
+                                loading={orthologsLoading}
+                            />
+                        </div>
+                        {geneSearch.gene && (
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--agr-gray-600)' }}>
+                                <i className="pi pi-check-circle" style={{ color: 'var(--agr-success)', marginRight: '0.375rem' }} />
+                                <strong>{geneSearch.gene.symbol}</strong> ({geneSearch.gene.species?.name}) &mdash; {geneSearch.gene.id}
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* Ortholog List */}
+            {/* Ortholog Selection Card */}
             {orthologs.length > 0 && (
-                <div className={styles.section}>
-                    <div className={styles.sectionLabel}>
-                        Orthologs for {selectedGene?.symbol} ({orthologs.length} found)
-                    </div>
-
-                    <div className={styles.batchActions}>
-                        <Button label="Select All" size="small" severity="secondary" outlined onClick={selectAll} />
-                        <Button label="AGR Species Only" size="small" severity="secondary" outlined onClick={selectAgrOnly} />
-                        <Button label="Clear" size="small" severity="secondary" outlined onClick={selectNone} />
-                    </div>
-
-                    {/* Source gene */}
-                    {sourceGene && (
-                        <div className={styles.orthologItem} onClick={() => setIncludeSource(!includeSource)}>
-                            <Checkbox checked={includeSource} onChange={() => setIncludeSource(!includeSource)} />
-                            <span className={styles.orthologSymbol}>{sourceGene.symbol}</span>
-                            <span className={styles.orthologSpecies}>{sourceGene.species}</span>
-                            <span className={styles.orthologId}>{sourceGene.geneId}</span>
-                            <span style={{ fontSize: '0.6875rem', color: 'var(--agr-primary-500)', fontWeight: 600 }}>SOURCE</span>
+                <div className="agr-card" style={{ marginTop: '1rem' }}>
+                    <div className="agr-card-header">
+                        <h2>Orthologs for {geneSearch.gene?.symbol} ({orthologs.length} found)</h2>
+                        <div style={{ display: 'flex', gap: '0.375rem' }}>
+                            <Button label="All" size="small" severity="secondary" outlined onClick={selectAll} />
+                            <Button label="AGR Species" size="small" severity="secondary" outlined onClick={selectAgrOnly} />
+                            <Button label="None" size="small" severity="secondary" outlined onClick={selectNone} />
                         </div>
-                    )}
-
-                    <div className={styles.orthologList}>
-                        {orthologs.map(o => (
-                            <div key={o.geneId} className={styles.orthologItem} onClick={() => toggleOrtholog(o.geneId)}>
-                                <Checkbox checked={o.selected} onChange={() => toggleOrtholog(o.geneId)} />
-                                <span className={styles.orthologSymbol}>{o.symbol}</span>
-                                <span className={styles.orthologSpecies}>{o.species}</span>
-                                <span className={styles.orthologId}>{o.geneId}</span>
+                    </div>
+                    <div className="agr-card-body" style={{ padding: 0 }}>
+                        {/* Source gene */}
+                        {sourceGene && (
+                            <div className={styles.orthologItem} onClick={() => setIncludeSource(!includeSource)}
+                                 style={{ borderBottom: '2px solid var(--agr-gray-200)', background: 'var(--agr-gray-50)' }}>
+                                <Checkbox checked={includeSource} onChange={() => setIncludeSource(!includeSource)} />
+                                <span className={styles.orthologSymbol}>{sourceGene.symbol}</span>
+                                <span className={styles.orthologSpecies}>{sourceGene.species}</span>
+                                <span className={styles.orthologId}>{sourceGene.geneId}</span>
+                                <span style={{ fontSize: '0.6875rem', background: 'var(--agr-primary-100)', color: 'var(--agr-primary-700)', padding: '0.125rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>SOURCE</span>
                             </div>
-                        ))}
-                    </div>
+                        )}
 
-                    <div className={styles.selectedCount}>
-                        {selectedCount} sequence{selectedCount !== 1 ? 's' : ''} selected
+                        <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                            {orthologs.map(o => (
+                                <div key={o.geneId} className={styles.orthologItem} onClick={() => toggleOrtholog(o.geneId)}>
+                                    <Checkbox checked={o.selected} onChange={() => toggleOrtholog(o.geneId)} />
+                                    <span className={styles.orthologSymbol}>{o.symbol}</span>
+                                    <span className={styles.orthologSpecies}>{o.species}</span>
+                                    <span className={styles.orthologId}>{o.geneId}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-
-                    {/* Submit */}
-                    <div className={styles.submitSection}>
+                    <div className="agr-card-footer">
                         <Button
                             label="Submit Alignment"
                             icon="pi pi-play"
                             onClick={handleSubmit}
                             disabled={selectedCount < 2 || phase !== 'idle'}
                             loading={phase !== 'idle' && phase !== 'error' && phase !== 'done'}
+                            className="p-button-lg"
                         />
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--agr-gray-500)', marginLeft: '0.75rem' }}>
+                            {selectedCount} sequence{selectedCount !== 1 ? 's' : ''} selected
+                        </span>
                         {statusMessage && phase !== 'idle' && phase !== 'error' && (
                             <span className={styles.statusMessage}>
                                 <i className="pi pi-spin pi-spinner" style={{ marginRight: '0.5rem' }} />
@@ -363,14 +377,14 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                             </span>
                         )}
                     </div>
-
-                    {error && <div className={styles.errorMessage}>{error}</div>}
+                    {error && <div className="agr-message agr-message-error" style={{ margin: '0.75rem' }}>{error}</div>}
                 </div>
             )}
 
-            {orthologs.length === 0 && selectedGene && !orthologsLoading && (
-                <div style={{ color: 'var(--agr-gray-400)', fontSize: '0.875rem', marginTop: '1rem' }}>
-                    Click &quot;Find Orthologs&quot; to discover orthologous genes across species.
+            {orthologsLoading && (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--agr-gray-500)' }}>
+                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }} />
+                    Searching for orthologs...
                 </div>
             )}
         </div>
