@@ -80,6 +80,8 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
     const [showProteinDomains, setShowProteinDomains] = useState<boolean>(false);
     const [showExonBoundaries, setShowExonBoundaries] = useState<boolean>(false);
     const [variantPanelOpen, setVariantPanelOpen] = useState<boolean>(false);
+    // Per-sequence variant visibility — tracks which sequence IDs to HIDE
+    const [hiddenVariantSeqs, setHiddenVariantSeqs] = useState<Set<string>>(new Set());
     // Variant filters (SAB mockup slide 13)
     const [variantTypeFilter, setVariantTypeFilter] = useState<Set<string>>(new Set());
     const [consequenceFilter, setConsequenceFilter] = useState<Set<string>>(new Set());
@@ -194,6 +196,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         const trackData: TrackDataProp = [];
 
         for (const [_seqId, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (hiddenVariantSeqs.has(_seqId)) continue;
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
@@ -211,7 +214,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return trackData;
-    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations, hiddenVariantSeqs]);
 
     // Extract unique variant types for filter UI
     const uniqueVariantTypes = useMemo(() => {
@@ -291,6 +294,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             const displayName = visibleData[i].name;
             // Look up original ID from display name
             const originalId = displayNameToId.get(displayName) || displayName;
+            if (hiddenVariantSeqs.has(originalId)) continue;
             if (
                 originalId in props.seqInfoDict &&
                 'embedded_variants' in props.seqInfoDict[originalId]
@@ -323,7 +327,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         }
 
         return features;
-    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations]);
+    }, [visibleData, props.seqInfoDict, displayNameToId, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations, hiddenVariantSeqs]);
 
     // Calculate label width based on max name length
     const labelWidth = useMemo(() => {
@@ -354,6 +358,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
         }> = [];
 
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
+            if (hiddenVariantSeqs.has(seqName)) continue;
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
@@ -407,7 +412,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
             }
         }
         return alleles;
-    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations]);
+    }, [props.seqInfoDict, variantTypeFilter, consequenceFilter, filterByDisease, filterByPhenotype, variantAnnotations, hiddenVariantSeqs]);
 
     // Calculate conservation scores for each position
     const conservationData = useMemo<LineData[]>(() => {
@@ -978,16 +983,37 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                 {/* Sequence selector for reordering — above the tracks */}
                 {orderedAlignmentData.length > 1 && (
                     <div className={styles.sequenceSelector}>
-                        {orderedAlignmentData.map((seq, idx) => (
-                            <button
-                                key={seq.name}
-                                className={`${styles.sequenceChip} ${idx === 0 ? styles.isReference : ''}`}
-                                onClick={() => promoteToReference(idx)}
-                                title={idx === 0 ? 'Reference sequence (at top)' : 'Click to move to top'}
-                            >
-                                {seq.name}
-                            </button>
-                        ))}
+                        {orderedAlignmentData.map((seq, idx) => {
+                            const seqId = displayNameToId.get(seq.name) || seq.name;
+                            const isHidden = hiddenVariantSeqs.has(seqId);
+                            return (
+                                <div key={seq.name} className={styles.sequenceChipWrapper}>
+                                    <button
+                                        className={`${styles.sequenceChip} ${idx === 0 ? styles.isReference : ''}`}
+                                        onClick={() => promoteToReference(idx)}
+                                        title={idx === 0 ? 'Reference sequence (at top)' : 'Click to move to top'}
+                                    >
+                                        {seq.name}
+                                    </button>
+                                    {showVariantLocations && (
+                                        <button
+                                            className={`${styles.variantSeqToggle} ${isHidden ? styles.variantSeqToggleHidden : ''}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setHiddenVariantSeqs(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(seqId)) next.delete(seqId); else next.add(seqId);
+                                                    return next;
+                                                });
+                                            }}
+                                            title={isHidden ? 'Show variants for this sequence' : 'Hide variants for this sequence'}
+                                        >
+                                            <i className={`pi ${isHidden ? 'pi-eye-slash' : 'pi-eye'}`} style={{ fontSize: '0.7rem' }} />
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 

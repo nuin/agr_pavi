@@ -626,6 +626,34 @@
   color: var(--agr-primary-500);
 }
 
+.sequenceChipWrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.variantSeqToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.125rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  line-height: 1;
+  color: var(--agr-gray-600);
+  display: flex;
+  align-items: center;
+}
+
+.variantSeqToggle:hover {
+  opacity: 1;
+}
+
+.variantSeqToggleHidden {
+  opacity: 0.8;
+  color: var(--agr-gray-400);
+}
+
 /* Navigation track styling */
 .navigationTrack {
   background: linear-gradient(180deg, #f8f9fb 0%, #ffffff 100%);
