@@ -287,7 +287,7 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                         value={geneQuery}
                         suggestions={suggestions}
                         completeMethod={searchGenes}
-                        field="name"
+                        field="displayName"
                         onChange={(e) => setGeneQuery(typeof e.value === 'string' ? e.value : e.value?.displayName || '')}
                         onSelect={(e) => onGeneSelect(e.value)}
                         placeholder="Search for a gene (e.g., SOD1, TP53, PITX2)"
