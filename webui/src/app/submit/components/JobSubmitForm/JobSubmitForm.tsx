@@ -29,6 +29,10 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
         const entityIndex = action.index
 
         switch (action.type) {
+            case 'CLEAR': {
+                console.log('inputPayloadReducer: clearing all entries')
+                return new Map() as InputPayloadPartMap
+            }
             case 'ADD': {
                 console.log('inputPayloadReducer ADD action called.')
                 /* istanbul ignore else */
@@ -127,9 +131,10 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     const handleLoadExample = useCallback((example: ExampleData) => {
         console.log('Loading example:', example.name)
         console.log('Genes to load:', example.genes)
+        dispatchInputPayloadPart({ type: 'CLEAR', index: 0, value: {} })
         setInitialGenes(example.genes)
         setValidationErrors([])
-    }, [])
+    }, [dispatchInputPayloadPart])
 
     const jobDisplayMsg = useCallback( () => {
         if (job['status'] === 'expected' || job['status'] === 'submitting') {
