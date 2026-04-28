@@ -11,6 +11,7 @@ interface AlignmentEntryListProps {
     readonly agrjBrowseDataRelease: string
     readonly dispatchInputPayloadPart: React.Dispatch<InputPayloadDispatchAction>
     readonly initialGenes?: ExampleGene[]
+    readonly loadVersion?: number
 }
 export const AlignmentEntryList: FunctionComponent<AlignmentEntryListProps> = (props: AlignmentEntryListProps) => {
 
@@ -108,7 +109,7 @@ export const AlignmentEntryList: FunctionComponent<AlignmentEntryListProps> = (p
     return (
         <div className="agr-alignment-list">
             {Array.from(alignmentEntries.values()).map((listEntry) => (
-                <div key={listEntry.props.index} className="agr-alignment-entry">
+                <div key={`${props.loadVersion ?? 0}-${listEntry.props.index}`} className="agr-alignment-entry">
                     {alignmentEntries.size > 1 && (
                         <div className="agr-alignment-entry-controls">
                             <Button

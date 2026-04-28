@@ -127,12 +127,17 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     const [displayMsg, setDisplayMsg] = useState('')
     const [validationErrors, setValidationErrors] = useState<string[]>([])
     const [initialGenes, setInitialGenes] = useState<ExampleGene[]>()
+    // Bump this counter on example load to force remount of AlignmentEntry components,
+    // ensuring their useEffect mount handler re-runs (clears stale internal state and
+    // re-dispatches ADD to inputPayloadParts).
+    const [loadVersion, setLoadVersion] = useState(0)
 
     const handleLoadExample = useCallback((example: ExampleData) => {
         console.log('Loading example:', example.name)
         console.log('Genes to load:', example.genes)
         dispatchInputPayloadPart({ type: 'CLEAR', index: 0, value: {} })
         setInitialGenes(example.genes)
+        setLoadVersion(v => v + 1)
         setValidationErrors([])
     }, [dispatchInputPayloadPart])
 
@@ -247,7 +252,8 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
                 <div className="agr-card-body">
                     <AlignmentEntryList agrjBrowseDataRelease={props.agrjBrowseDataRelease}
                                         dispatchInputPayloadPart={dispatchInputPayloadPart}
-                                        initialGenes={initialGenes} />
+                                        initialGenes={initialGenes}
+                                        loadVersion={loadVersion} />
                 </div>
                 <div className="agr-card-footer">
                     <Button label='Submit Job' onClick={handleSubmit} icon="pi pi-check"
