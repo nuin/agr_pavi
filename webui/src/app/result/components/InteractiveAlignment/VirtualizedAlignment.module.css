@@ -393,6 +393,23 @@
   color: var(--agr-gray-400);
   font-style: italic;
   font-weight: 500;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  border-bottom: 1px dotted var(--agr-gray-300);
+}
+
+.nonCodingLabel:hover {
+  color: var(--agr-gray-600);
+}
+
+.variantSpecies {
+  font-size: 0.6875rem;
+  font-style: italic;
+  color: var(--agr-gray-500);
+  font-weight: 500;
+  margin-bottom: 0.125rem;
 }
 
 .variantId {

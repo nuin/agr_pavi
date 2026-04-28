@@ -339,8 +339,24 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 
     // Extract allele information for display
     const alleleInfo = useMemo(() => {
+        // Mirror of the pipeline's NON_CODING_CONSEQUENCES set (variant.py)
+        // Used to hide non-coding consequence badges on protein-coding variant cards
+        const NON_CODING_CONSEQUENCES = new Set([
+            '3_prime_UTR_variant',
+            '5_prime_UTR_variant',
+            'intron_variant',
+            'upstream_gene_variant',
+            'downstream_gene_variant',
+            'intergenic_variant',
+            'non_coding_transcript_variant',
+            'non_coding_transcript_exon_variant',
+            'mature_miRNA_variant',
+            'NMD_transcript_variant',
+        ]);
+
         const alleles: Array<{
             seqName: string;
+            species: string | null;
             variantId: string;
             refSeq: string;
             altSeq: string;
@@ -359,14 +375,21 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
 
         for (const [seqName, seqInfo] of Object.entries(props.seqInfoDict)) {
             if (hiddenVariantSeqs.has(seqName)) continue;
+            const species = seqInfo.species || null;
             if (seqInfo.embedded_variants) {
                 for (const variant of seqInfo.embedded_variants) {
                     if (variantTypeFilter.size > 0 && !variantTypeFilter.has(variant.seq_substitution_type)) continue;
                     if (consequenceFilter.size > 0 && !(variant.molecular_consequences?.some(mc => consequenceFilter.has(mc)))) continue;
                     if (filterByDisease && !variantAnnotations[variant.variant_id]?.hasDisease) continue;
                     if (filterByPhenotype && !variantAnnotations[variant.variant_id]?.hasPhenotype) continue;
+                    // Filter out non-coding consequences from coding variant cards.
+                    // These come from cross-transcript annotations and aren't relevant to the protein context.
+                    const codingConsequences = (variant.molecular_consequences || []).filter(
+                        mc => !NON_CODING_CONSEQUENCES.has(mc)
+                    );
                     alleles.push({
                         seqName,
+                        species,
                         variantId: variant.variant_id,
                         refSeq: variant.genomic_ref_seq || '-',
                         altSeq: variant.genomic_alt_seq || '-',
@@ -375,7 +398,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                         alignmentPos: variant.alignment_start_pos,
                         hgvsProtein: variant.hgvs_protein || null,
                         impact: variant.impact || null,
-                        consequences: variant.molecular_consequences || [],
+                        consequences: codingConsequences,
                         hasDisease: variantAnnotations[variant.variant_id]?.hasDisease || false,
                         hasPhenotype: variantAnnotations[variant.variant_id]?.hasPhenotype || false,
                         alleleSymbol: variantAnnotations[variant.variant_id]?.alleleSymbol || null,
@@ -393,6 +416,7 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                     if (filterByPhenotype && !variantAnnotations[variant.variant_id]?.hasPhenotype) continue;
                     alleles.push({
                         seqName,
+                        species,
                         variantId: variant.variant_id,
                         refSeq: variant.genomic_ref_seq || '-',
                         altSeq: variant.genomic_alt_seq || '-',
@@ -793,6 +817,9 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                     )}
                                     {allele.variantId}
                                 </div>
+                                {allele.species && (
+                                    <div className={styles.variantSpecies}>{allele.species}</div>
+                                )}
                                 <div className={styles.variantDetails}>
                                     <span className={styles.variantChange}>
                                         {allele.refSeq} → {allele.altSeq}
@@ -804,7 +831,16 @@ const VirtualizedAlignment: FunctionComponent<VirtualizedAlignmentProps> = (
                                 <div className={styles.variantPosition}>
                                     {allele.position}
                                     {allele.isNonCoding ? (
-                                        <span className={styles.nonCodingLabel}>non-coding</span>
+                                        <span
+                                            className={styles.nonCodingLabel}
+                                            title={
+                                                'This variant is in a non-coding region (e.g., 5\' UTR, 3\' UTR, intron) ' +
+                                                'and does not change the protein sequence. It\'s shown for completeness ' +
+                                                'but is not placed on the alignment track.'
+                                            }
+                                        >
+                                            non-coding <i className="pi pi-info-circle" style={{ fontSize: '0.6rem' }} />
+                                        </span>
                                     ) : (
                                         <span className={styles.variantAlnPos}>alignment pos {allele.alignmentPos}</span>
                                     )}
