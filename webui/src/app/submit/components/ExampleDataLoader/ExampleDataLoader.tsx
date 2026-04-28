@@ -99,17 +99,17 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
     {
         id: 'trp53-cancer-variants',
         name: 'Trp53 Cancer Variants',
-        description: 'Mouse Trp53 with 5 engineered cancer-associated point mutations compared to human and zebrafish orthologs',
+        description: 'Mouse Trp53 with 4 cancer-associated missense alleles (R270H, P275S, N236S, R334H) plus one 3\' UTR variant (demonstrates non-coding filter), compared to human and zebrafish orthologs',
         category: 'advanced',
         genes: [
             {
                 geneId: 'MGI:98834', geneName: 'Trp53', species: 'Mus musculus',
                 alleleIds: [
-                    'MGI:6393635',   // Trp53<em1Yoli> - g.69482682A>C
-                    'MGI:6718305',   // Trp53<tm1.1Gpz> - g.69481498G>C
-                    'MGI:5431904',   // Trp53<tm1.1Rfo> - g.69480448C>T
-                    'MGI:6763106',   // Trp53<tm1.1Itl> - g.69480010A>G
-                    'MGI:6202103',   // Trp53<tm1.1Hwan> - g.69481498G>C
+                    'MGI:6393635',   // Trp53<em1Yoli> - 3' UTR polyA (mimics human rs78378222) - non-coding demo
+                    'MGI:3039266',   // Trp53<tm3.1Tyj> - p.R270H - Li-Fraumeni hotspot (Tyler Jacks)
+                    'MGI:5431904',   // Trp53<tm1.1Rfo> - p.P275S - UVB hotspot (human codon 278)
+                    'MGI:6763106',   // Trp53<tm1.1Itl> - p.N236S - human tumor mutation
+                    'MGI:6718305',   // Trp53<tm1.1Gpz> - p.R334H - tumor susceptibility
                 ],
             },
             { geneId: 'HGNC:11998', geneName: 'TP53', species: 'Homo sapiens' },
