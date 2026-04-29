@@ -1,7 +1,7 @@
 'use server';
 
-import { GeneInfo, AlleleInfo, GeneSuggestion, GeneAutocompleteApiResponse } from "./types";
-import { fetchAllPages } from "@/app/helper_fns";
+import { GeneInfo, AlleleInfo, GeneSuggestion, GeneAutocompleteApiResponse, VariantConsequence } from "./types";
+import { fetchAllPages, fetchUntilDistinct } from "@/app/helper_fns";
 
 export async function fetchGeneInfo (geneId: string): Promise<GeneInfo|undefined> {
 
@@ -138,36 +138,76 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
         const queryParams = new URLSearchParams()
         queryParams.append('filter.alleleCategory', searchAlleleCategories.join('|'))
 
-        // Limit to 500 allele records to prevent browser freeze on genes with thousands of variants
-        const MAX_ALLELE_RESULTS = 500;
-        console.log(`Fetching allele info for gene ${geneId} (max ${MAX_ALLELE_RESULTS} results)`)
+        // Alliance returns 1 row per (allele, variant, consequence) triple.
+        // Page until we hit MAX_DISTINCT_ALLELES distinct allele.id, with a
+        // hard row ceiling to bound payload on extreme cases (e.g. TP53 with
+        // 100k+ rows for thousands of distinct alleles).
+        const MAX_DISTINCT_ALLELES = 100;
+        const MAX_ROWS = 3000;
+        console.log(`Fetching allele info for gene ${geneId} (max ${MAX_DISTINCT_ALLELES} distinct alleles, ${MAX_ROWS} rows)`)
 
-        const results = await fetchAllPages({url: endpointUrl, urlSearchParams: queryParams, maxResults: MAX_ALLELE_RESULTS});
+        const results = await fetchUntilDistinct({
+            url: endpointUrl,
+            urlSearchParams: queryParams,
+            keyExtractor: (row: any) => row?.allele?.id,
+            maxDistinct: MAX_DISTINCT_ALLELES,
+            maxRows: MAX_ROWS,
+        });
         console.log(`Allele info for gene ${geneId} received successfully.`)
 
         const allelesMap = new Map<string, AlleleInfo>()
 
+        const stripHtml = (s?: string) => (s ?? '').replace(/<[^>]+>/g, '')
+
+        const parseConsequence = (raw: any): VariantConsequence | undefined => {
+            if (!raw) return undefined
+            const proteinPosRaw = raw['proteinStartPosition']
+            const proteinPos = proteinPosRaw !== undefined && proteinPosRaw !== null
+                ? Number(proteinPosRaw)
+                : undefined
+            return {
+                transcriptId: raw['transcript']?.['id'],
+                transcriptName: raw['transcript']?.['name'],
+                molecularConsequences: Array.isArray(raw['molecularConsequences']) ? raw['molecularConsequences'] : [],
+                impact: raw['impact'],
+                proteinStartPosition: Number.isFinite(proteinPos) ? proteinPos as number : undefined,
+                sift: raw['siftPrediction'],
+                polyphen: raw['polyphenPrediction'],
+            }
+        }
+
         results.forEach((result: any) => {
-            const allele = allelesMap.get(result['allele']['id'])
             if (result['variant'] === undefined) {
                 console.error('Error: allele with undefined variant:', result)
                 return;
             }
-            const variant = {
-                id: result['variant']['id'],
-                displayName: result['variant']['displayName']
+            const alleleId = result['allele']['id']
+            const variantId = result['variant']['id']
+            const consequence = parseConsequence(result['consequence'])
+
+            let allele = allelesMap.get(alleleId)
+            if (allele === undefined) {
+                allele = {
+                    id: alleleId,
+                    displayName: stripHtml(result['allele']['symbol']),
+                    variants: new Map(),
+                    hasDisease: Boolean(result['allele']['hasDisease']),
+                    hasPhenotype: Boolean(result['allele']['hasPhenotype']),
+                }
+                allelesMap.set(alleleId, allele)
             }
 
-            if (allele === undefined) {
-                allelesMap.set(result['allele']['id'], {
-                    id: result['allele']['id'],
-                    displayName: result['allele']['symbol'],
-                    variants: new Map([[variant['id'], variant]])
-                })
-            } else {
-                if (!allele.variants.get(variant['id'])) {
-                    allele.variants.set(variant['id'], variant)
+            let variant = allele.variants.get(variantId)
+            if (variant === undefined) {
+                variant = {
+                    id: variantId,
+                    displayName: result['variant']['displayName'],
+                    consequences: [],
                 }
+                allele.variants.set(variantId, variant)
+            }
+            if (consequence) {
+                variant.consequences.push(consequence)
             }
         })
 
