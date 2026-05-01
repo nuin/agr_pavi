@@ -7,7 +7,6 @@
  * with configurable time-to-live (TTL) and automatic cleanup.
  */
 
-import { useState, useEffect, useCallback } from 'react';
 
 export interface CacheEntry<T> {
     data: T;
@@ -286,54 +285,6 @@ class DataCacheImpl {
 
 // Singleton instance for global use
 export const dataCache = new DataCacheImpl();
-
-// Factory function for creating isolated cache instances
-export function createCache(options: CacheOptions = {}): DataCacheImpl {
-    return new DataCacheImpl(options);
-}
-
-// React hook for using cache with components
-export function useCachedData<T>(
-    key: string,
-    fetcher: () => Promise<T>,
-    options: CacheOptions = {}
-): {
-    data: T | null;
-    isLoading: boolean;
-    error: Error | null;
-    refetch: () => Promise<void>;
-} {
-
-    const [data, setData] = useState<T | null>(() => dataCache.get<T>(key, options));
-    const [isLoading, setIsLoading] = useState(!data);
-    const [error, setError] = useState<Error | null>(null);
-
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const result = await dataCache.getOrFetch(key, fetcher, options);
-            setData(result);
-        } catch (e) {
-            setError(e instanceof Error ? e : new Error('Fetch failed'));
-        } finally {
-            setIsLoading(false);
-        }
-    }, [key, fetcher, options]);
-
-    useEffect(() => {
-        if (!data) {
-            fetchData();
-        }
-    }, [data, fetchData]);
-
-    const refetch = useCallback(async () => {
-        dataCache.delete(key, options);
-        await fetchData();
-    }, [key, options, fetchData]);
-
-    return { data, isLoading, error, refetch };
-}
 
 // Predefined cache configurations for common use cases
 export const CACHE_CONFIGS = {

@@ -1,7 +1,7 @@
 'use server';
 
 import { GeneInfo, AlleleInfo, GeneSuggestion, GeneAutocompleteApiResponse, VariantConsequence } from "./types";
-import { fetchAllPages, fetchUntilDistinct } from "@/app/helper_fns";
+import { fetchUntilDistinct } from "@/app/helper_fns";
 
 export async function fetchGeneInfo (geneId: string): Promise<GeneInfo|undefined> {
 

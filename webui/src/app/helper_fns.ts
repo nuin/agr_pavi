@@ -36,8 +36,8 @@ export async function fetchUntilDistinct({
     // Page 1: serial, gives us total + early-exit window.
     const first = await fetchPage(1);
     const total = (first as any).total ?? first.returnedRecords;
-    let rows: any[] = [...first.results];
-    let distinct = new Set<string>();
+    const rows: any[] = [...first.results];
+    const distinct = new Set<string>();
     for (const r of first.results) {
         const k = keyExtractor(r); if (k !== undefined) distinct.add(k);
     }

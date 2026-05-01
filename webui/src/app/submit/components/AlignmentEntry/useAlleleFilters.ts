@@ -125,7 +125,9 @@ export interface UseAlleleFiltersResult {
     options: AlleleFilterOptions
     activeCount: number
     filteredAlleles: AlleleInfo[]
+    // eslint-disable-next-line no-unused-vars
     setSetFilter: (field: 'consequences' | 'impacts' | 'transcriptIds' | 'sift' | 'polyphen', values: Iterable<string>) => void
+    // eslint-disable-next-line no-unused-vars
     setBoolFilter: (field: 'hasDisease' | 'hasPhenotype', value: boolean | null) => void
     clearFilters: () => void
 }

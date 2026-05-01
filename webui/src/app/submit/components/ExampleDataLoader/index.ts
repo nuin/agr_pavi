@@ -1,2 +1,2 @@
-export { ExampleDataLoader, EXAMPLE_DATASETS } from './ExampleDataLoader';
+export { ExampleDataLoader } from './ExampleDataLoader';
 export type { ExampleData, ExampleGene } from './ExampleDataLoader';
