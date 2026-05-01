@@ -35,15 +35,32 @@ export interface TranscriptInfo {
     }>
 }
 
+export type VariantImpact = 'HIGH' | 'MODERATE' | 'LOW' | 'MODIFIER'
+export type SiftPrediction = 'deleterious' | 'deleterious_low_confidence' | 'tolerated' | 'tolerated_low_confidence'
+export type PolyphenPrediction = 'probably_damaging' | 'possibly_damaging' | 'benign' | 'unknown'
+
+export interface VariantConsequence {
+    readonly transcriptId?: string,
+    readonly transcriptName?: string,
+    readonly molecularConsequences: string[],
+    readonly impact?: VariantImpact,
+    readonly proteinStartPosition?: number,
+    readonly sift?: SiftPrediction,
+    readonly polyphen?: PolyphenPrediction,
+}
+
 export interface VariantInfo {
     readonly id: string,
     readonly displayName: string,
+    consequences: VariantConsequence[],
 }
 
 export interface AlleleInfo {
     readonly id: string,
     readonly displayName: string,
-    variants: Map<string, VariantInfo>
+    variants: Map<string, VariantInfo>,
+    hasDisease: boolean,
+    hasPhenotype: boolean,
 }
 
 export type FeatureStrand = 1 | -1

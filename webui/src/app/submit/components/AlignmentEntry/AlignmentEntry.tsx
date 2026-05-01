@@ -8,6 +8,8 @@ import React, { createRef, FunctionComponent, useCallback, useEffect, useState }
 
 import { useGeneSearch, useTranscriptSelection, useAlleleSelection } from '@/hooks';
 import { AlignmentEntryStatus, AlleleInfo } from './types';
+import { useAlleleFilters } from './useAlleleFilters';
+import { AlleleFilterPanel } from './AlleleFilterPanel';
 import { JobSumbissionPayloadRecord, InputPayloadPart, InputPayloadDispatchAction } from '../JobSubmitForm/types';
 
 // Note: dynamic import of stage vs main src is currently not possible on client nor server (2024/07/25).
@@ -141,6 +143,8 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
         },
         alleleMultiselectRef
     );
+
+    const alleleFilters = useAlleleFilters(alleleSelection.alleleList);
 
     // Register callback to reset dependent selections when gene changes
     useEffect(() => {
@@ -401,7 +405,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         style={{ width: '100%' }}
                         filter
                         filterBy="filterValue"
-                        emptyMessage={!geneSearch.gene ? "Select a gene first" : (alleleSelection.alleleListLoading || alleleSelection.alleleList.length === 0 && !alleleSelection.alleleListLoaded) ? "Loading alleles..." : "No alleles with variants found"}
+                        emptyMessage={!geneSearch.gene ? "Select a gene first" : (alleleSelection.alleleListLoading || alleleSelection.alleleList.length === 0 && !alleleSelection.alleleListLoaded) ? "Loading alleles..." : alleleFilters.activeCount > 0 ? "No alleles match filters" : "No alleles with variants found"}
                         value={alleleSelection.selectedAlleleIds}
                         onChange={(e) => alleleSelection.setSelectedAlleleIds(e.value)}
                         itemTemplate={alleleOptionTemplate}
@@ -414,7 +418,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                             alleleSelection.setAlleleListOpened(true);
                             alleleSelection.loadAllelesOnDemand();
                         }}
-                        options={alleleSelection.alleleList.map((r) => ({
+                        options={alleleFilters.filteredAlleles.map((r) => ({
                             key: r['id'],
                             chipLabel: r['displayName'],
                             filterValue: alleleOptionFilterValue(r),
@@ -431,8 +435,46 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         }}>
                             (optional)
                         </span>
+                        {alleleSelection.alleleListLoading && (
+                            <span style={{
+                                marginLeft: '0.5rem',
+                                fontSize: '0.75rem',
+                                color: 'var(--agr-text-muted, #6c757d)',
+                                fontStyle: 'italic',
+                            }}>
+                                <i className="pi pi-spin pi-spinner" style={{ fontSize: '0.7rem', marginRight: '0.25rem' }} />
+                                loading…
+                            </span>
+                        )}
+                        {!alleleSelection.alleleListLoading && alleleSelection.alleleList.length > 0 && (
+                            <span style={{
+                                marginLeft: '0.5rem',
+                                fontSize: '0.75rem',
+                                color: alleleFilters.activeCount > 0
+                                    ? 'var(--agr-primary, #2563eb)'
+                                    : 'var(--agr-text-muted, #6c757d)',
+                                fontWeight: alleleFilters.activeCount > 0 ? 600 : 'normal',
+                            }}>
+                                {alleleFilters.activeCount > 0
+                                    ? `${alleleFilters.filteredAlleles.length} of ${alleleSelection.alleleList.length}`
+                                    : `${alleleSelection.alleleList.length} available`}
+                            </span>
+                        )}
                     </label>
                 </FloatLabel>
+            </div>
+
+            {/* 4. Allele filters (per-row) */}
+            <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
+                <AlleleFilterPanel
+                    filters={alleleFilters.filters}
+                    options={alleleFilters.options}
+                    activeCount={alleleFilters.activeCount}
+                    setSetFilter={alleleFilters.setSetFilter}
+                    setBoolFilter={alleleFilters.setBoolFilter}
+                    clearFilters={alleleFilters.clearFilters}
+                    disabled={!geneSearch.gene || alleleSelection.alleleList.length === 0}
+                />
             </div>
         </div>
     );
