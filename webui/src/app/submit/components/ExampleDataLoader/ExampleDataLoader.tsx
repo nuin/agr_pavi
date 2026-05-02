@@ -21,7 +21,7 @@ export interface ExampleGene {
 }
 
 // Pre-defined example datasets
-export const EXAMPLE_DATASETS: ExampleData[] = [
+const EXAMPLE_DATASETS: ExampleData[] = [
     {
         id: 'tp53-orthologs',
         name: 'TP53 Orthologs',

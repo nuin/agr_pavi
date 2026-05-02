@@ -3,20 +3,13 @@
  * Used when MOCK_API=true environment variable is set
  */
 
-export const mockJobSubmissionResponse = {
+const mockJobSubmissionResponse = {
     uuid: '12345678-1234-1234-1234-123456789abc',
     status: 'pending',
     inputValidationPassed: true,
 };
 
-export const mockJobStatusPending = {
-    uuid: '12345678-1234-1234-1234-123456789abc',
-    status: 'pending',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-};
-
-export const mockJobStatusRunning = {
+const mockJobStatusRunning = {
     uuid: '12345678-1234-1234-1234-123456789abc',
     status: 'running',
     created_at: new Date(Date.now() - 60000).toISOString(),
@@ -24,7 +17,7 @@ export const mockJobStatusRunning = {
     progress: 45,
 };
 
-export const mockJobStatusCompleted = {
+const mockJobStatusCompleted = {
     uuid: '12345678-1234-1234-1234-123456789abc',
     status: 'completed',
     created_at: new Date(Date.now() - 120000).toISOString(),
@@ -33,7 +26,7 @@ export const mockJobStatusCompleted = {
     completed_at: new Date().toISOString(),
 };
 
-export const mockJobStatusFailed = {
+const mockJobStatusFailed = {
     uuid: '12345678-1234-1234-1234-123456789abc',
     status: 'failed',
     created_at: new Date(Date.now() - 90000).toISOString(),
@@ -41,7 +34,7 @@ export const mockJobStatusFailed = {
     error_message: 'Mock error: Sequence retrieval failed',
 };
 
-export const mockAlignmentResult = `CLUSTAL O(1.2.4) multiple sequence alignment
+const mockAlignmentResult = `CLUSTAL O(1.2.4) multiple sequence alignment
 
 
 BRCA1_HUMAN         MDLSALRVEEVQNVINAMQKILECPICLELIKEPVSTKCDHIFCKFCMLKLLNQKKGPS 60
@@ -59,7 +52,7 @@ BRCA1_MOUSE         NDEVSIIQSMGYRNRAKRLLQSEPENPSLQETSQSVQLSNLGTVRTLRTKQRIQPQKTL 
                     :**********************************:*************************
 `;
 
-export const mockAlignedSeqInfo = {
+const mockAlignedSeqInfo = {
     sequences: [
         {
             id: 'BRCA1_HUMAN',
@@ -86,7 +79,7 @@ export const mockAlignedSeqInfo = {
     identityPercentage: 89.4,
 };
 
-export const mockJobLogs = `[2024-01-19 10:15:23] Job submitted with UUID: 12345678-1234-1234-1234-123456789abc
+const mockJobLogs = `[2024-01-19 10:15:23] Job submitted with UUID: 12345678-1234-1234-1234-123456789abc
 [2024-01-19 10:15:24] Validating input parameters...
 [2024-01-19 10:15:24] Input validation passed
 [2024-01-19 10:15:25] Starting sequence retrieval for HGNC:1100

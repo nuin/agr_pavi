@@ -61,5 +61,3 @@ export function AlignmentSkeleton({
         </div>
     );
 }
-
-export default AlignmentSkeleton;

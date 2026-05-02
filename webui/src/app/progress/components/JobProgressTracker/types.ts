@@ -1,11 +1,3 @@
-export enum JobProgressStatus {
-    /* eslint-disable no-unused-vars */
-    pending,
-    running,
-    completed,
-    failed
-}
-
 export interface JobStatusResponse {
     uuid: string;
     status: string;

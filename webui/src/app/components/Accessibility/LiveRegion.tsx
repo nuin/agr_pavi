@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback } from 'react';
 import styles from './Accessibility.module.css';
 
 type Politeness = 'polite' | 'assertive';
@@ -11,14 +11,6 @@ interface LiveRegionContextType {
 }
 
 const LiveRegionContext = createContext<LiveRegionContextType | null>(null);
-
-export function useLiveRegion() {
-    const context = useContext(LiveRegionContext);
-    if (!context) {
-        throw new Error('useLiveRegion must be used within a LiveRegionProvider');
-    }
-    return context;
-}
 
 interface LiveRegionProviderProps {
     children: React.ReactNode;
