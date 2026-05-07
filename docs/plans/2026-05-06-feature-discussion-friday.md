@@ -1,5 +1,34 @@
 # Pending feature discussion — Friday 2026-05-08
 
+## TL;DR for tomorrow's meeting
+
+**Branch `feature/ortholog-and-variant-improvements` (5 commits ahead of main):**
+
+Already shipped on this branch:
+- Wrong gene IDs in two examples (SOD1, MYH6) — `RGD:3727` was
+  Sult2a6 (sulfotransferase) not Sod1; `ZFIN:ZDB-GENE-991019-3` was
+  myl7 (light chain) not myh6. Verified against Alliance ortholog API.
+- Per-row allele filter now auto-syncs to the selected transcript
+  (curie-based, with a wipe-out safety net).
+- Submit page spacing tightened (cards, header bars, page title,
+  intro banner).
+- Ortholog submission page: auto-fetch on gene select, parallel
+  Alliance fetches, structured error handling, stale-state cleanup.
+
+In another session (per parallel work): protein-altering variant
+filter on the result page (toggle + splice-site SO terms included).
+
+Items below need product/UX decisions before further work:
+
+| # | Topic                                          | Blocker                                    |
+|---|------------------------------------------------|---------------------------------------------|
+| 5 | Visualize sequence transcript                  | Where + scope undefined                     |
+| 6 | Per-ortholog variant + transcript selection    | Default transcript pick policy              |
+| 7 | Add alleles to a finished alignment            | New job vs in-place vs profile-profile mode |
+
+---
+
+
 Three items from the working list need product/UX clarification before
 implementation can proceed safely. Captured here so the Friday discussion
 has concrete questions to anchor on.
@@ -138,4 +167,14 @@ Branch `feature/ortholog-and-variant-improvements`:
 - `59afa907` task 1: fix wrong gene IDs in SOD1 and MYH6 examples
 - `d46daed0` task 3: auto-filter alleles by selected transcript
 - `a5bc49da` task 4: tighten spacing on submit page
-- *(pending)* task 6: ortholog page improvements (subset)
+- `07264f9b` document open feature questions for Friday discussion
+- `753be6e2` task 6: improve ortholog submission page
+  (auto-fetch, parallel API, structured errors, stale-state cleanup)
+
+Task 2 (protein-altering variant filter) is being handled in a parallel
+working session and is expected to land on this branch separately.
+
+Larger items deliberately deferred from task 6 (require Friday
+alignment): per-ortholog variant selection, per-ortholog transcript
+selection, extracting the duplicated `useTranscriptSelection` payload
+logic into a shared module.
