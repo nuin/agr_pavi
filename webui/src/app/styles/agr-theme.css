@@ -246,17 +246,17 @@ a:hover {
   background: var(--agr-background);
   border: 1px solid var(--agr-border-color);
   border-radius: var(--agr-radius-lg);
-  padding: var(--agr-spacing-lg);
-  margin-bottom: var(--agr-spacing-lg);
+  padding: var(--agr-spacing-md) var(--agr-spacing-lg);
+  margin-bottom: var(--agr-spacing-md);
   box-shadow: var(--agr-shadow-sm);
 }
 
 .agr-card-header {
   background-color: var(--agr-gray-100);
-  padding: var(--agr-spacing-md) var(--agr-spacing-lg);
+  padding: var(--agr-spacing-sm) var(--agr-spacing-lg);
   border-bottom: 1px solid var(--agr-border-color);
-  margin: calc(-1 * var(--agr-spacing-lg));
-  margin-bottom: var(--agr-spacing-lg);
+  margin: calc(-1 * var(--agr-spacing-md)) calc(-1 * var(--agr-spacing-lg));
+  margin-bottom: var(--agr-spacing-md);
   border-radius: var(--agr-radius-lg) var(--agr-radius-lg) 0 0;
   font-weight: 600;
   color: var(--agr-primary-700);
@@ -418,8 +418,8 @@ a:hover {
 .agr-page-title {
   font-size: var(--agr-font-size-h2);
   color: var(--agr-primary-700);
-  margin-bottom: var(--agr-spacing-lg);
-  padding-bottom: var(--agr-spacing-md);
+  margin-bottom: var(--agr-spacing-md);
+  padding-bottom: var(--agr-spacing-sm);
   border-bottom: 2px solid var(--agr-primary-500);
 }
 
@@ -472,7 +472,7 @@ a:hover {
 
 /* Page Section Styles */
 .agr-page-section {
-  padding: var(--agr-spacing-md) 0;
+  padding: var(--agr-spacing-sm) 0;
 }
 
 .agr-page-header {
@@ -502,13 +502,13 @@ a:hover {
 }
 
 .agr-card-footer {
-  padding-top: var(--agr-spacing-lg);
+  padding-top: var(--agr-spacing-md);
   border-top: 1px solid var(--agr-border-color);
-  margin-top: var(--agr-spacing-lg);
+  margin-top: var(--agr-spacing-md);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--agr-spacing-lg);
+  gap: var(--agr-spacing-md);
 }
 
 /* Alignment Entry List Styles */
