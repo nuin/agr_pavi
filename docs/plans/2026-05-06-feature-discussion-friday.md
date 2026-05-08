@@ -24,7 +24,6 @@ Items below need product/UX decisions before further work:
 |---|------------------------------------------------|---------------------------------------------|
 | 5 | Visualize sequence transcript                  | Where + scope undefined                     |
 | 6 | Per-ortholog variant + transcript selection    | Default transcript pick policy              |
-| 7 | Add alleles to a finished alignment            | New job vs in-place vs profile-profile mode |
 
 ---
 
@@ -114,50 +113,7 @@ Code quality:
 
 ## 7. Add extra alleles / sequences to a finished alignment
 
-**Original ask:** "add extra alleles/sequences to an already finished /
-visualized alignment".
-
-**Architectural questions:**
-
-a. **What does "add" mean?**
-   - Re-run the pipeline with the original input plus the new sequences,
-     producing a new job UUID? (Simplest; preserves immutability.)
-   - In-place augmentation of the existing alignment, projecting new
-     sequences onto the fixed columns of the prior alignment? (Hard;
-     Clustal Omega supports `--profile1 / --profile2` for this — see
-     "profile-profile alignment".)
-   - Side-by-side display where the old alignment is read-only and new
-     sequences are aligned separately, then visually merged?
-
-b. **Where does the user trigger this?**
-   - Button on the result page ("Add sequence...") that opens a sequence
-     picker?
-   - "Clone & extend" link on `/jobs` that pre-fills `/submit` with the
-     prior input?
-
-c. **How do we handle stale results?**
-   - If alleles or transcripts have changed in Alliance since the
-     original job ran, do we re-fetch or use cached?
-   - Job storage (DynamoDB/SQLite — see `docs/configuration-reference.md`)
-     keeps the pipeline output but not the original input payload in
-     full. Would need to extend storage schema if "clone" is the path.
-
-**Pipeline implications:**
-- Current `pipeline_components/alignment/` invokes Clustal Omega on a
-  merged FASTA. Profile-profile mode would require a new entry point.
-- Step Functions state machine is currently linear (retrieve → align →
-  collect). Adding "extend" would need either a parallel branch or a
-  separate state machine.
-- `seq-info` merging logic (`collectAndAlignSeqInfo`) assumes one
-  alignment per job. Multi-stage merging would change this.
-
-**Open questions for Friday:**
-- New job vs in-place augmentation — which model?
-- If new-job model: do we want a "based on job UUID" parent reference
-  for traceability? (Lineage in `/jobs` view.)
-- How frequently is this expected to be used — informs whether it
-  warrants pipeline work or is acceptable as a "clone & resubmit"
-  shortcut?
+**Status:** out of scope — leaving as-is. No discussion needed.
 
 ---
 
