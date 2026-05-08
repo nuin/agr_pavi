@@ -1,11 +1,11 @@
 'use client';
 
-import React, { FunctionComponent, useRef } from 'react'
+import React, { FunctionComponent, useState } from 'react'
 
 import { Button } from 'primereact/button'
 import { Checkbox } from 'primereact/checkbox'
+import { Dialog } from 'primereact/dialog'
 import { MultiSelect } from 'primereact/multiselect'
-import { OverlayPanel } from 'primereact/overlaypanel'
 
 import { AlleleFilters, AlleleFilterOptions } from './useAlleleFilters'
 
@@ -52,7 +52,7 @@ const BoolCheckbox: FunctionComponent<{
 export const AlleleFilterPanel: FunctionComponent<AlleleFilterPanelProps> = ({
     filters, options, activeCount, setSetFilter, setBoolFilter, clearFilters, disabled,
 }) => {
-    const panelRef = useRef<OverlayPanel>(null)
+    const [visible, setVisible] = useState(false)
 
     const buildOptions = (values: string[]) => values.map(v => ({ label: v, value: v }))
 
@@ -71,18 +71,18 @@ export const AlleleFilterPanel: FunctionComponent<AlleleFilterPanelProps> = ({
                 tooltipOptions={{ position: 'top' }}
                 aria-label="Filter alleles"
                 disabled={disabled}
-                onClick={(e) => panelRef.current?.toggle(e)}
+                onClick={() => setVisible(true)}
             />
-            <OverlayPanel
-                ref={panelRef}
-                showCloseIcon
-                dismissable
-                appendTo={typeof window !== 'undefined' ? document.body : undefined}
-                style={{ width: '320px', zIndex: 2000 }}
-                pt={{ content: { style: { padding: '1rem' } } }}
+            <Dialog
+                visible={visible}
+                onHide={() => setVisible(false)}
+                header="Filter alleles"
+                dismissableMask
+                modal
+                style={{ width: '360px', maxWidth: '95vw' }}
+                contentStyle={{ padding: '1rem' }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <strong style={{ fontSize: '0.875rem' }}>Filter alleles</strong>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
                     <Button
                         type="button"
                         label="Clear"
@@ -204,7 +204,7 @@ export const AlleleFilterPanel: FunctionComponent<AlleleFilterPanelProps> = ({
                         onChange={(v) => setBoolFilter('hasPhenotype', v)}
                     />
                 </div>
-            </OverlayPanel>
+            </Dialog>
         </>
     )
 }
