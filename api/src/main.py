@@ -15,6 +15,8 @@ from uuid import uuid1, UUID
 from constants import JobStatus
 from log_mgmt import get_logger
 
+import job_db
+
 from job_service import (
     get_job_service,
     JobService,
@@ -971,6 +973,52 @@ async def get_pipeline_job_seq_info_result(uuid: UUID) -> StreamingResponse:
                     yield from file_like
 
             return StreamingResponse(iterfile(), media_type="application/json")
+
+
+@router.get(
+    "/pipeline-job/{uuid}/export",
+    responses={
+        404: {"model": HTTP_exception_response},
+        501: {"model": HTTP_exception_response},
+    },
+)
+async def get_pipeline_job_export(uuid: UUID) -> StreamingResponse:
+    """
+    Download a self-contained per-job SQLite (`job.db`).
+
+    The file holds the original input payload, the alignment output, and
+    the seq-info output for the job. It can be opened by any SQLite
+    client and is the format a future PAVI desktop application would
+    consume.
+
+    Currently produced only by the local pipeline mode. Step Functions
+    mode does not yet emit a per-job DB.
+    """
+    if not USE_LOCAL_PIPELINE:
+        raise HTTPException(
+            status_code=501,
+            detail="Per-job DB export is currently only available in local pipeline mode.",
+        )
+
+    job_service = get_job_service()
+    db_path = job_db.db_path_for_job(job_service.local_results_path, str(uuid))
+    if not db_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Per-job DB not found. The job may not be complete yet, or it predates the per-job DB feature.",
+        )
+
+    def iterfile():  # type: ignore
+        with open(db_path, "rb") as f:
+            yield from f
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="application/x-sqlite3",
+        headers={
+            "Content-Disposition": f'attachment; filename="pavi-job-{uuid}.db"'
+        },
+    )
 
 
 @router.get(

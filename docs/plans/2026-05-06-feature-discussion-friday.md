@@ -24,6 +24,7 @@ Items below need product/UX decisions before further work:
 |---|------------------------------------------------|---------------------------------------------|
 | 5 | Visualize sequence transcript                  | Where + scope undefined                     |
 | 6 | Per-ortholog variant + transcript selection    | Default transcript pick policy              |
+| 7 | Add alleles to finished alignment              | Phase 1 (per-job DB + export) shipped       |
 
 ---
 
@@ -113,7 +114,42 @@ Code quality:
 
 ## 7. Add extra alleles / sequences to a finished alignment
 
-**Status:** out of scope — leaving as-is. No discussion needed.
+**Direction:** one self-contained SQLite per finished job, written
+alongside the existing alignment + seq-info files. Each job DB carries
+the full input payload and both pipeline outputs, so it can be exported
+as a single file (basis for a future PAVI desktop application) and is
+the natural place to attach additional alleles / sequences when
+extending an existing alignment.
+
+**Phase 1 (this branch):**
+- `api/src/job_db.py` module: per-job schema (`metadata`,
+  `input_seq_regions`, `results`), write/read helpers.
+- Hook in `api/src/local_pipeline.py` after the result files land:
+  write a per-job `job.db` next to them. Failure is logged + swallowed
+  so it never converts a successful pipeline run into a user-visible
+  failure; the on-disk `.aln` / `.json` remain canonical.
+- Export endpoint `GET /api/pipeline-job/{uuid}/export` returning the
+  per-job DB as `application/x-sqlite3` with a download disposition.
+  Local pipeline mode only for now (Step Functions emits no per-job
+  DB yet).
+- Unit tests covering round-trip, overwrite-on-rerun, missing file,
+  and corrupt file tolerance.
+
+**Phase 2 (future):**
+- WebUI "Download job" link on the result page that hits the export
+  endpoint.
+- WebUI "Add alleles" flow that reads the per-job DB to pre-fill the
+  submit form with the original input, lets the user add alleles, and
+  submits a new derived job (lineage tracked via a parent UUID
+  column added to the metadata table).
+- Production parity: emit a per-job DB from the Step Functions
+  pipeline as well, so prod jobs gain the same exportability.
+
+**Open questions deferred to Friday:**
+- Should the per-job DB also include a copy of the variant
+  annotations fetched at result-render time, so the export is fully
+  reproducible offline? Trade-off: bigger files, but a richer desktop
+  experience.
 
 ---
 
