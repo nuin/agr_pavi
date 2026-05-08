@@ -77,7 +77,8 @@ export const AlleleFilterPanel: FunctionComponent<AlleleFilterPanelProps> = ({
                 ref={panelRef}
                 showCloseIcon
                 dismissable
-                style={{ width: '320px' }}
+                appendTo={typeof window !== 'undefined' ? document.body : undefined}
+                style={{ width: '320px', zIndex: 2000 }}
                 pt={{ content: { style: { padding: '1rem' } } }}
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
