@@ -513,6 +513,7 @@ function FullscreenAlignmentContent() {
                 {seqLength > 0 && fullAlignmentData.length > 0 ? (
                     <NightingaleManagerComponent
                         reflected-attributes="display-start,display-end"
+                        style={{ display: 'block', width: '100%', minWidth: '600px' }}
                     >
                         {/* Navigation ruler */}
                         <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
