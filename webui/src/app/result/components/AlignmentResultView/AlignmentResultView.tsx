@@ -4,6 +4,7 @@ import React, { FunctionComponent, useCallback, useEffect, useState } from 'reac
 
 import dynamic from 'next/dynamic';
 import { Dropdown } from 'primereact/dropdown';
+import { Button } from 'primereact/button';
 
 import { fetchAlignmentResults, fetchAlignmentSeqInfo } from './serverActions';
 import { displayModeType } from './types';
@@ -240,13 +241,26 @@ export const AlignmentResultView: FunctionComponent<AlignmentResultViewProps> = 
                 <div className="agr-card-header">
                     <div className="agr-result-header">
                         <h2>Protein Sequence Alignment</h2>
-                        <div className="agr-display-mode-selector">
+                        <div className="agr-display-mode-selector" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                             <label htmlFor="display-mode">Display mode: </label>
                             <Dropdown id="display-mode"
                                 value={displayMode} onChange={(e) => changeDisplayMode(e.value)}
                                 options={displayModeOptions}
                                 optionLabel='label'
                                 className="agr-dropdown-sm"/>
+                            <Button
+                                type="button"
+                                label="Download .db"
+                                icon="pi pi-download"
+                                size="small"
+                                outlined
+                                tooltip="Download the per-job SQLite (input + alignment + seq-info)"
+                                tooltipOptions={{ position: 'top' }}
+                                onClick={() => {
+                                    window.location.href = `/api/pipeline-job/${props.uuidStr}/export`;
+                                }}
+                                disabled={isLoading || !!loadError || !alignmentResult}
+                            />
                         </div>
                     </div>
                 </div>
