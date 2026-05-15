@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from log_mgmt.log_manager import get_logger
+import job_db
 
 log = get_logger(__name__)
 
@@ -133,6 +134,23 @@ class LocalPipelineRunner:
 
             shutil.copy(alignment_file, result_alignment)
             shutil.copy(seq_info_file, result_seqinfo)
+
+            # Write a self-contained per-job SQLite alongside the result
+            # files (input + alignment + seq-info). Failure is logged and
+            # swallowed inside job_db.write_finished_job; the on-disk
+            # files remain canonical.
+            try:
+                alignment_bytes = result_alignment.read_bytes()
+                seqinfo_bytes = result_seqinfo.read_bytes()
+                job_db.write_finished_job(
+                    db_path=job_db.db_path_for_job(self.results_dir, job_id),
+                    job_id=job_id,
+                    seq_regions=seq_regions,
+                    alignment_bytes=alignment_bytes,
+                    seq_info_bytes=seqinfo_bytes,
+                )
+            except Exception as e:
+                log.warning(f"Per-job DB write failed for {job_id}: {e}")
 
             self._update_progress(job_id, "DONE", len(seq_regions))
 

@@ -83,7 +83,7 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
         category: 'basic',
         genes: [
             { geneId: 'MGI:98351', geneName: 'Sod1', species: 'Mus musculus' },
-            { geneId: 'RGD:3727', geneName: 'Sod1', species: 'Rattus norvegicus' },
+            { geneId: 'RGD:3731', geneName: 'Sod1', species: 'Rattus norvegicus' },
         ],
     },
     {
@@ -92,7 +92,7 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
         description: 'Cardiac myosin heavy chain - heart development model',
         category: 'cross-species',
         genes: [
-            { geneId: 'ZFIN:ZDB-GENE-991019-3', geneName: 'myh6', species: 'Danio rerio' },
+            { geneId: 'ZFIN:ZDB-GENE-031112-1', geneName: 'myh6', species: 'Danio rerio' },
             { geneId: 'HGNC:7576', geneName: 'MYH6', species: 'Homo sapiens' },
         ],
     },
@@ -132,7 +132,7 @@ export const EXAMPLE_DATASETS: ExampleData[] = [
                     'MGI:5575771',   // Sod1<m1H> - g.90022044A>G
                 ],
             },
-            { geneId: 'RGD:3727', geneName: 'Sod1', species: 'Rattus norvegicus' },
+            { geneId: 'RGD:3731', geneName: 'Sod1', species: 'Rattus norvegicus' },
         ],
     },
 ];

@@ -513,6 +513,7 @@ function FullscreenAlignmentContent() {
                 {seqLength > 0 && fullAlignmentData.length > 0 ? (
                     <NightingaleManagerComponent
                         reflected-attributes="display-start,display-end"
+                        style={{ display: 'block', width: '100%', minWidth: '600px' }}
                     >
                         {/* Navigation ruler */}
                         <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
@@ -535,16 +536,19 @@ function FullscreenAlignmentContent() {
 
                         {/* Conservation graph */}
                         {showConservation && conservationData.length > 0 && (
-                            <div style={{ paddingLeft: labelWidth + 'px', marginBottom: '0.5rem' }}>
-                                <NightingaleLinegraphTrack
-                                    data={conservationData}
-                                    display-start={displayStart}
-                                    display-end={displayEnd}
-                                    length={seqLength}
-                                    height={60}
-                                    margin-left={0}
-                                    margin-right={5}
-                                />
+                            <div className={styles.trackContainer}>
+                                <div className={styles.trackLabel}>Conservation (%)</div>
+                                <div className={styles.conservationTrack} style={{ paddingLeft: labelWidth + 'px' }}>
+                                    <NightingaleLinegraphTrack
+                                        data={conservationData}
+                                        display-start={displayStart}
+                                        display-end={displayEnd}
+                                        length={seqLength}
+                                        height={60}
+                                        margin-left={0}
+                                        margin-right={5}
+                                    />
+                                </div>
                             </div>
                         )}
 

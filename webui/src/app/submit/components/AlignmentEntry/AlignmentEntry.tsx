@@ -4,7 +4,7 @@ import { FloatLabel } from 'primereact/floatlabel';
 import { AutoComplete, AutoCompleteState, AutoCompletePassThroughMethodOptions } from 'primereact/autocomplete';
 import { Message } from 'primereact/message';
 import { MultiSelect } from 'primereact/multiselect';
-import React, { createRef, FunctionComponent, useCallback, useEffect, useState } from 'react';
+import React, { createRef, FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useGeneSearch, useTranscriptSelection, useAlleleSelection } from '@/hooks';
 import { AlignmentEntryStatus, AlleleInfo } from './types';
@@ -145,6 +145,36 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
     );
 
     const alleleFilters = useAlleleFilters(alleleSelection.alleleList);
+    const { setSetFilter: setAlleleFilter, filters: activeAlleleFilters, filteredAlleles } = alleleFilters;
+
+    // Auto-filter alleles to those affecting the currently selected transcript(s).
+    // Use curie (Alliance-API-aligned identifier) rather than JBrowse internal id.
+    const selectedTranscriptCuries = useMemo(
+        () => transcriptSelection.selectedTranscriptsInfo
+            .map((t) => t.curie)
+            .filter((c): c is string => Boolean(c)),
+        [transcriptSelection.selectedTranscriptsInfo]
+    );
+    const transcriptCuriesKey = selectedTranscriptCuries.join('|');
+
+    useEffect(() => {
+        setAlleleFilter('transcriptIds', selectedTranscriptCuries);
+    }, [transcriptCuriesKey, setAlleleFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Safety net: if curie-based transcript filter wipes out all alleles
+    // (likely an ID-format mismatch with consequence.transcriptId), clear it.
+    const transcriptFilterCount = activeAlleleFilters.transcriptIds.size;
+    const filteredAlleleCount = filteredAlleles.length;
+    const totalAlleleCount = alleleSelection.alleleList.length;
+    useEffect(() => {
+        if (transcriptFilterCount > 0 && totalAlleleCount > 0 && filteredAlleleCount === 0) {
+            console.warn(
+                '[AlignmentEntry] Selected transcript curie(s) not found in allele consequence data; clearing transcript filter.',
+                { curies: Array.from(activeAlleleFilters.transcriptIds) }
+            );
+            setAlleleFilter('transcriptIds', []);
+        }
+    }, [transcriptFilterCount, filteredAlleleCount, totalAlleleCount, setAlleleFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Register callback to reset dependent selections when gene changes
     useEffect(() => {

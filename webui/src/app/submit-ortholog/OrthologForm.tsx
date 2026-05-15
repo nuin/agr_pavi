@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, createRef } from 'react';
+import React, { useState, useCallback, useEffect, createRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { AutoComplete, AutoCompleteState } from 'primereact/autocomplete';
@@ -62,25 +62,43 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    // Find orthologs
-    const handleFindOrthologs = useCallback(async () => {
-        if (!geneSearch.gene) return;
+    // Extract a readable message from a thrown value (Error or otherwise).
+    const errMsg = (e: unknown): string =>
+        e instanceof Error ? e.message : String(e);
+
+    // Auto-fetch orthologs whenever the focus gene changes.
+    // Cancellation guards against a stale response landing after a quick
+    // gene reselect.
+    const focusGeneId = geneSearch.gene?.id;
+    useEffect(() => {
+        if (!focusGeneId) return;
+        let cancelled = false;
         setOrthologsLoading(true);
         setError(null);
+        setOrthologs([]);
+        setSourceGene(null);
 
-        try {
-            const result = await fetchOrthologs(geneSearch.gene!.id);
-            setSourceGene(result.sourceGene);
-            setOrthologs(result.orthologs.map(o => ({
-                ...o,
-                selected: AGR_SPECIES_TAXONS.has(o.taxonId),
-            })));
-        } catch (e) {
-            setError(`Failed to fetch orthologs: ${e}`);
-        } finally {
-            setOrthologsLoading(false);
-        }
-    }, [geneSearch.gene]);
+        fetchOrthologs(focusGeneId)
+            .then((result) => {
+                if (cancelled) return;
+                setSourceGene(result.sourceGene);
+                setOrthologs(result.orthologs.map((o) => ({
+                    ...o,
+                    selected: AGR_SPECIES_TAXONS.has(o.taxonId),
+                })));
+            })
+            .catch((e) => {
+                if (cancelled) return;
+                setError(`Failed to fetch orthologs: ${errMsg(e)}`);
+            })
+            .finally(() => {
+                if (!cancelled) setOrthologsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [focusGeneId]);
 
     const toggleOrtholog = useCallback((geneId: string) => {
         setOrthologs(prev => prev.map(o =>
@@ -127,8 +145,15 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
         });
     }
 
-    // Fetch transcript data for a single gene and build payload record
-    async function buildPayloadForGene(gene: GeneInfo, index: number): Promise<JobSumbissionPayloadRecord | null> {
+    interface BuildPayloadResult {
+        record: JobSumbissionPayloadRecord | null;
+        error: string | null;
+    }
+
+    // Fetch transcript data for a single gene and build payload record.
+    // Returns a structured result so callers can collect failures without
+    // sharing mutable state through the function object.
+    async function buildPayloadForGene(gene: GeneInfo, index: number): Promise<BuildPayloadResult> {
         try {
             const speciesConfig = getSpecies(gene.species.taxonId);
             const genomeLocation = getSingleGenomeLocation(gene.genomeLocations);
@@ -147,8 +172,7 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
             });
 
             if (!transcripts || transcripts.length === 0) {
-                console.warn(`No transcripts found for ${gene.symbol}`);
-                return null;
+                return { record: null, error: `${gene.symbol}: no transcripts found` };
             }
 
             // Pick first transcript (same as useTranscriptSelection)
@@ -178,34 +202,34 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
             cds_regions = jBrowseSubfeatureRelToRefPos(cds_regions, feature.strand, transcript.get('start'), transcript.get('end'));
 
             if (cds_regions.length === 0) {
-                console.warn(`No CDS regions for ${gene.symbol} — skipping`);
-                return null;
+                return { record: null, error: `${gene.symbol}: no CDS regions` };
             }
 
             const transcriptName = (transcript.get('name') as string) ?? gene.symbol;
 
             return {
-                unique_entry_id: `${index}_${gene.symbol}_${transcriptName}`,
-                base_seq_name: `${gene.symbol}_${transcriptName}`,
-                seq_id: genomeLocation['chromosome'],
-                seq_strand: feature.strand === -1 ? '-' : '+',
-                exon_seq_regions: exons.map((e: any) => ({ start: e.refStart, end: e.refEnd })),
-                cds_seq_regions: cds_regions.map((c: any) => ({ start: c.refStart, end: c.refEnd, frame: c.phase ?? 0 })),
-                fasta_file_url: speciesConfig.jBrowsefastaurl,
-                variant_ids: [],
-                alt_seq_name_suffix: '_alt',
-                species: gene.species.name,
+                record: {
+                    unique_entry_id: `${index}_${gene.symbol}_${transcriptName}`,
+                    base_seq_name: `${gene.symbol}_${transcriptName}`,
+                    seq_id: genomeLocation['chromosome'],
+                    seq_strand: feature.strand === -1 ? '-' : '+',
+                    exon_seq_regions: exons.map((e: any) => ({ start: e.refStart, end: e.refEnd })),
+                    cds_seq_regions: cds_regions.map((c: any) => ({ start: c.refStart, end: c.refEnd, frame: c.phase ?? 0 })),
+                    fasta_file_url: speciesConfig.jBrowsefastaurl,
+                    variant_ids: [],
+                    alt_seq_name_suffix: '_alt',
+                    species: gene.species.name,
+                },
+                error: null,
             };
-        } catch (e: any) {
-            const msg = e?.message || String(e);
+        } catch (e: unknown) {
+            const msg = errMsg(e);
             console.error(`Failed to build payload for ${gene.symbol} (${gene.id}, taxon=${gene.species?.taxonId}): ${msg}`);
-            (buildPayloadForGene as any).lastError = `${gene.symbol}: ${msg}`;
-            return null;
+            return { record: null, error: `${gene.symbol}: ${msg}` };
         }
     }
 
     // Submit job
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleSubmit = useCallback(async () => {
         const selectedOrthologs = orthologs.filter(o => o.selected);
         const allGeneIds = [
@@ -222,13 +246,11 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
         setError(null);
 
         try {
-            // Fetch gene info for each
+            // Fetch gene info in parallel — Alliance API tolerates concurrent
+            // single-gene queries fine, and N-organism orthologs sets are small.
             setStatusMessage(`Fetching gene info for ${allGeneIds.length} genes...`);
-            const geneInfos: GeneInfo[] = [];
-            for (const geneId of allGeneIds) {
-                const info = await fetchGeneInfo(geneId);
-                if (info) geneInfos.push(info);
-            }
+            const geneInfoResults = await Promise.all(allGeneIds.map(fetchGeneInfo));
+            const geneInfos = geneInfoResults.filter((info): info is GeneInfo => Boolean(info));
 
             if (geneInfos.length < 2) {
                 setError(`Only ${geneInfos.length} gene(s) could be resolved. Need at least 2.`);
@@ -236,20 +258,18 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                 return;
             }
 
-            // Fetch transcripts and build payloads
+            // Fetch transcripts and build payloads in parallel.
             setPhase('fetching-transcripts');
-            const payloads: JobSumbissionPayloadRecord[] = [];
-            const failures: string[] = [];
-            for (let i = 0; i < geneInfos.length; i++) {
-                setStatusMessage(`Fetching transcripts for ${geneInfos[i].symbol} (${i + 1}/${geneInfos.length})...`);
-                const record = await buildPayloadForGene(geneInfos[i], i);
-                if (record) {
-                    payloads.push(record);
-                } else {
-                    const lastErr = (buildPayloadForGene as any).lastError || geneInfos[i].symbol;
-                    failures.push(lastErr);
-                }
-            }
+            setStatusMessage(`Fetching transcripts for ${geneInfos.length} genes in parallel...`);
+            const buildResults = await Promise.all(
+                geneInfos.map((info, i) => buildPayloadForGene(info, i))
+            );
+            const payloads = buildResults
+                .map((r) => r.record)
+                .filter((r): r is JobSumbissionPayloadRecord => r !== null);
+            const failures = buildResults
+                .map((r) => r.error)
+                .filter((e): e is string => e !== null);
 
             if (payloads.length < 2) {
                 setError(`Only ${payloads.length} gene(s) had valid transcripts. Need at least 2. Failed: ${failures.join(', ')}`);
@@ -264,10 +284,11 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
             setPhase('done');
             router.push(`/progress?uuid=${job.uuid}`);
         } catch (e) {
-            setError(`Submission failed: ${e}`);
+            setError(`Submission failed: ${errMsg(e)}`);
             setPhase('error');
         }
-    }, [orthologs, includeSource, sourceGene, router, agrjBrowseDataRelease]);
+        // buildPayloadForGene + errMsg are defined inline; deps list matches the values actually closed over.
+    }, [orthologs, includeSource, sourceGene, router, agrjBrowseDataRelease]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="agr-page-section">
@@ -294,24 +315,22 @@ export function OrthologForm({ agrjBrowseDataRelease }: OrthologFormProps) {
                                 onSelect={(e) => {
                                     geneSearch.setSelectedGeneSuggestion(e.value);
                                     geneSearch.setGeneQuery(e.value);
-                                    setOrthologs([]);
                                     setError(null);
                                 }}
                                 onHide={() => geneSearch.autoSelectSingleGeneSuggestion()}
                                 onClear={() => {
                                     geneSearch.setSelectedGeneSuggestion(undefined);
                                     geneSearch.clearGeneSuggestionList();
+                                    setOrthologs([]);
+                                    setSourceGene(null);
+                                    setError(null);
                                 }}
                                 placeholder="e.g., SOD1, TP53, PITX2"
                                 style={{ flex: 1 }}
                             />
-                            <Button
-                                label="Find Orthologs"
-                                icon="pi pi-search"
-                                onClick={handleFindOrthologs}
-                                disabled={!geneSearch.gene || orthologsLoading}
-                                loading={orthologsLoading}
-                            />
+                            {orthologsLoading && (
+                                <i className="pi pi-spin pi-spinner" style={{ fontSize: '1.25rem', color: 'var(--agr-primary-500)' }} aria-label="Loading orthologs" />
+                            )}
                         </div>
                         {geneSearch.gene && (
                             <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--agr-gray-600)' }}>
