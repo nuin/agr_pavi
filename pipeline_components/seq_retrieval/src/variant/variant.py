@@ -268,36 +268,95 @@ class Variant:
         response.raise_for_status()
         variant_data = response.json()
 
-        # Extract molecular consequences from transcriptLevelConsequence array
-        molecular_consequences: List[str] = []
-        transcript_consequences = variant_data.get("transcriptLevelConsequence", [])
-        for consequence in transcript_consequences:
-            if "molecularConsequences" in consequence:
-                for mc in consequence["molecularConsequences"]:
-                    if mc not in molecular_consequences:
-                        molecular_consequences.append(mc)
+        # The Alliance v9 response shape moved the variant location and
+        # consequence data under `variantList[].curatedVariantGenomicLocations[]`
+        # with predicted consequences under each location's
+        # `predictedVariantConsequences[]`. The old shape kept everything
+        # at the top level under `location` and `transcriptLevelConsequence`.
+        # Support both, preferring the old fields if present.
+        is_legacy_shape = "location" in variant_data
 
-        # Extract HGVS nomenclature and impact from first transcript consequence
+        molecular_consequences: List[str] = []
         hgvs_protein = None
         hgvs_coding = None
         impact = None
-        if transcript_consequences:
-            first = transcript_consequences[0]
-            hgvs_protein = first.get("hgvsProteinNomenclature")
-            hgvs_coding = first.get("hgvsCodingNomenclature")
-            impact = first.get("impact")
+        seq_id = None
+        start = None
+        end = None
+        genomic_ref_seq = None
+        genomic_alt_seq = None
+        gene_id = None
 
-        # Extract gene ID
-        gene_data = variant_data.get("gene", {})
-        gene_id = gene_data.get("id") if isinstance(gene_data, dict) else None
+        if is_legacy_shape:
+            transcript_consequences = variant_data.get("transcriptLevelConsequence", [])
+            for consequence in transcript_consequences:
+                for mc in consequence.get("molecularConsequences", []) or []:
+                    if mc not in molecular_consequences:
+                        molecular_consequences.append(mc)
+            if transcript_consequences:
+                first = transcript_consequences[0]
+                hgvs_protein = first.get("hgvsProteinNomenclature")
+                hgvs_coding = first.get("hgvsCodingNomenclature")
+                impact = first.get("impact")
+
+            gene_data = variant_data.get("gene", {})
+            gene_id = gene_data.get("id") if isinstance(gene_data, dict) else None
+
+            location = variant_data.get("location", {})
+            seq_id = location.get("chromosome")
+            start = location.get("start")
+            end = location.get("end")
+            genomic_ref_seq = variant_data.get("genomicReferenceSequence")
+            genomic_alt_seq = variant_data.get("genomicVariantSequence")
+        else:
+            variant_list = variant_data.get("variantList") or []
+            location = {}
+            if variant_list:
+                locations = variant_list[0].get("curatedVariantGenomicLocations") or []
+                if locations:
+                    location = locations[0]
+
+            seq_id = (
+                location.get("variantGenomicLocationAssociationObject", {})
+                .get("name")
+            )
+            start = location.get("start")
+            end = location.get("end")
+            genomic_ref_seq = location.get("referenceSequence")
+            genomic_alt_seq = location.get("variantSequence")
+
+            # Aggregate molecular consequences across every predicted
+            # consequence on this location, deduped, preserving order.
+            predicted = location.get("predictedVariantConsequences") or []
+            for pc in predicted:
+                for vc in pc.get("vepConsequences") or []:
+                    name = vc.get("name") if isinstance(vc, dict) else vc
+                    if name and name not in molecular_consequences:
+                        molecular_consequences.append(name)
+
+            # First predicted consequence's HGVS + impact match the prior
+            # "first transcript_consequence" semantics closely enough.
+            most_severe = location.get("mostSevereConsequence") or (predicted[0] if predicted else None)
+            if most_severe:
+                hgvs_protein = most_severe.get("hgvsProteinNomenclature")
+                hgvs_coding = most_severe.get("hgvsCodingNomenclature")
+                vep_impact = most_severe.get("vepImpact")
+                if isinstance(vep_impact, dict):
+                    impact = vep_impact.get("name")
+                else:
+                    impact = vep_impact
+
+            gene_ids = variant_data.get("geneIds") or []
+            if gene_ids:
+                gene_id = gene_ids[0]
 
         return cls(
             variant_id=variant_id,
-            seq_id=variant_data["location"]["chromosome"],
-            start=variant_data["location"]["start"],
-            end=variant_data["location"]["end"],
-            genomic_ref_seq=variant_data.get("genomicReferenceSequence"),
-            genomic_alt_seq=variant_data.get("genomicVariantSequence"),
+            seq_id=seq_id,
+            start=start,
+            end=end,
+            genomic_ref_seq=genomic_ref_seq,
+            genomic_alt_seq=genomic_alt_seq,
             molecular_consequences=molecular_consequences,
             hgvs_protein=hgvs_protein,
             hgvs_coding=hgvs_coding,
