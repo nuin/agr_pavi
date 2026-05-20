@@ -260,14 +260,18 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
             const proteinPos = proteinPosRaw !== undefined && proteinPosRaw !== null
                 ? Number(proteinPosRaw)
                 : undefined
+            // SIFT and PolyPhen predictions also moved from plain strings
+            // to { name } objects in the new Alliance shape.
+            const flatten = (v: unknown): string | undefined =>
+                typeof v === 'string' ? v : (v as { name?: string })?.name
             return {
                 transcriptId: txId,
                 transcriptName: txName,
                 molecularConsequences: consequences,
                 impact,
                 proteinStartPosition: Number.isFinite(proteinPos) ? proteinPos as number : undefined,
-                sift: raw['siftPrediction'],
-                polyphen: raw['polyphenPrediction'],
+                sift: flatten(raw['siftPrediction']) as VariantConsequence['sift'],
+                polyphen: flatten(raw['polyphenPrediction']) as VariantConsequence['polyphen'],
             }
         }
 
