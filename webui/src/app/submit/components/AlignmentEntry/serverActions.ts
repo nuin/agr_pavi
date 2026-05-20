@@ -1,7 +1,58 @@
 'use server';
 
 import { GeneInfo, AlleleInfo, GeneSuggestion, GeneAutocompleteApiResponse, VariantConsequence } from "./types";
-import { fetchAllPages, fetchUntilDistinct } from "@/app/helper_fns";
+import { fetchUntilDistinct } from "@/app/helper_fns";
+
+// Adapt the new Alliance gene-summary response shape (everything nested
+// under `.gene`, taxon/species split) to the flat GeneInfo shape that
+// the rest of the WebUI was written against. Keeps downstream
+// consumers (useTranscriptSelection, getSingleGenomeLocation, gene
+// display names) working without a wider refactor.
+//
+// New shape -> old fields:
+//   gene.primaryExternalId                                    -> id
+//   gene.geneSymbol.displayText                               -> symbol
+//   gene.taxon.species  (+ taxon.curie as taxonId)            -> species
+//   gene.taxon.species.abbreviation                           -> species.shortName
+//   gene.geneGenomicLocationAssociations[].{start,end,strand,
+//     geneGenomicLocationAssociationObject.name}              -> genomeLocations[]
+//                                                                with .chromosome from .name
+function adaptGeneResponse(body: any): GeneInfo | undefined {
+    if (!body) return undefined;
+    // Backwards compatibility: if the API ever returns the old flat
+    // shape again, pass it through unchanged.
+    if (body.id && body.symbol && body.species) {
+        return body as GeneInfo;
+    }
+    const g = body.gene;
+    if (!g) return undefined;
+
+    const taxonSpecies = g.taxon?.species ?? {};
+    const species = {
+        ...taxonSpecies,
+        // Compatibility shims so older callers that read .shortName or
+        // .taxonId off `species` continue to work.
+        shortName: taxonSpecies.abbreviation,
+        taxonId: g.taxon?.curie,
+        name: g.taxon?.name,
+    };
+
+    const genomeLocations = (g.geneGenomicLocationAssociations ?? []).map((loc: any) => ({
+        start: loc.start,
+        end: loc.end,
+        strand: loc.strand,
+        chromosome: loc.geneGenomicLocationAssociationObject?.name,
+        assembly: loc.geneGenomicLocationAssociationObject?.taxon?.species?.assembly_curie,
+        ...loc,
+    }));
+
+    return {
+        id: g.primaryExternalId,
+        symbol: g.geneSymbol?.displayText ?? g.primaryExternalId,
+        species,
+        genomeLocations,
+    };
+}
 
 export async function fetchGeneInfo (geneId: string): Promise<GeneInfo|undefined> {
 
@@ -23,8 +74,8 @@ export async function fetchGeneInfo (geneId: string): Promise<GeneInfo|undefined
     })
     .then(([response, body]) => {
         if (response.ok) {
-            console.log(`Gene info for gene ${geneId} received successfully: ${JSON.stringify(body)}`)
-            return body as GeneInfo;
+            console.log(`Gene info for gene ${geneId} received successfully.`)
+            return adaptGeneResponse(body);
         } else {
             const errMsg = 'Failure response received from gene API.'
             console.error(errMsg)
