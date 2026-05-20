@@ -213,8 +213,15 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
         //   result.consequence.polyphenPrediction     -> removed at this level
         //   result.consequence.proteinStartPosition   -> removed at this level
 
+        // Named alleles (filter.alleleCategory='allele with one variant')
+        // use `primaryExternalId` (e.g. MGI:6157439); variant rows
+        // (filter.alleleCategory='variant') use `curie` (e.g. rs146579778).
+        // Check both so the example dataset's MGI:* allele IDs can be
+        // matched and pre-selected after example load.
         const extractAlleleKey = (row: any): string | undefined =>
-            row?.allele?.id ?? row?.allele?.curie
+            row?.allele?.id
+            ?? row?.allele?.primaryExternalId
+            ?? row?.allele?.curie
 
         const results = await fetchUntilDistinct({
             url: endpointUrl,
@@ -279,7 +286,13 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
                 ?? alleleId
             const consequence = parseConsequence(result['consequence'])
 
-            const alleleSymbol = result['allele']?.['symbol'] ?? result['symbol']
+            // Named alleles carry their symbol under allele.alleleSymbol.{formatText,displayText}.
+            // Variant rows put the genomic-location symbol at the top-level result.symbol.
+            // Fall back through both shapes plus the legacy allele.symbol path.
+            const alleleSymbol = result['allele']?.['symbol']
+                ?? result['allele']?.['alleleSymbol']?.['displayText']
+                ?? result['allele']?.['alleleSymbol']?.['formatText']
+                ?? result['symbol']
 
             let allele = allelesMap.get(alleleId)
             if (allele === undefined) {
