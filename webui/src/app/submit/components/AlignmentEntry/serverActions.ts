@@ -242,10 +242,20 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
             const tx = raw['variantTranscript'] ?? raw['transcript']
             const txId = tx?.['curie'] ?? tx?.['id']
             const txName = tx?.['name']
-            const consequences = Array.isArray(raw['vepConsequences'])
+            // New shape: vepConsequences is an array of objects
+            //   { name: 'missense_variant', descendantCount, severityOrder }
+            // Old shape: molecularConsequences is an array of plain strings.
+            // Normalize to string[] either way so downstream filter UI
+            // (MultiSelect options, badge labels) can render them.
+            const rawConsequences = Array.isArray(raw['vepConsequences'])
                 ? raw['vepConsequences']
                 : (Array.isArray(raw['molecularConsequences']) ? raw['molecularConsequences'] : [])
-            const impact = raw['vepImpact'] ?? raw['impact']
+            const consequences: string[] = rawConsequences
+                .map((c: unknown) => (typeof c === 'string' ? c : (c as { name?: string })?.name))
+                .filter((c): c is string => Boolean(c))
+            // vepImpact is also an object { name: 'MODERATE' } in the new shape.
+            const rawImpact = raw['vepImpact'] ?? raw['impact']
+            const impact = typeof rawImpact === 'string' ? rawImpact : rawImpact?.name
             const proteinPosRaw = raw['proteinStartPosition']
             const proteinPos = proteinPosRaw !== undefined && proteinPosRaw !== null
                 ? Number(proteinPosRaw)
