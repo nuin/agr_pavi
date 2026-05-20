@@ -278,10 +278,15 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
                 console.warn('Allele row without identifier, skipping:', result)
                 return
             }
-            // Variant no longer carries its own id field in the new shape.
-            // Fall back to the allele id so the inner variant map still
-            // deduplicates correctly per (allele, variant) row.
-            const variantId = result['variant']?.['id']
+            // Pipeline /api/variant/{id} now only accepts HGVS strings
+            // (e.g. "NC_000082.7:g.90017759C>T"). MGI:*, rs*, and other
+            // CURIEs return 400. Prefer HGVS so the seq_retrieval stage
+            // can actually fetch the variant; fall back to whatever id
+            // surrogate is available so dedup still works.
+            const hgvs = result['variant']?.['curatedVariantGenomicLocations']?.[0]?.['hgvs']
+            const variantId = hgvs
+                ?? result['symbol']  // variant rows put HGVS at top-level result.symbol
+                ?? result['variant']?.['id']
                 ?? result['variant']?.['curie']
                 ?? alleleId
             const consequence = parseConsequence(result['consequence'])
