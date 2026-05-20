@@ -1,6 +1,6 @@
 'use server';
 
-import { GeneInfo, AlleleInfo, GeneSuggestion, GeneAutocompleteApiResponse, VariantConsequence } from "./types";
+import { GeneInfo, AlleleInfo, GeneSuggestion, VariantConsequence } from "./types";
 import { fetchUntilDistinct } from "@/app/helper_fns";
 
 // Adapt the new Alliance gene-summary response shape (everything nested
@@ -101,8 +101,13 @@ export async function fetchGeneSuggestionsAutocomplete (query: string): Promise<
 
     console.log(`New gene suggestion search request received.`)
 
-    const endpointUrl = `https://www.alliancegenome.org/api/search_autocomplete/`
-    const jobResponse = fetch(`${endpointUrl}?category=gene&q=${query}`, {
+    // The Alliance v9 search reshape:
+    //   - /api/search_autocomplete now returns {} for any query.
+    //   - /api/search?category=gene&... also returns total=0.
+    //   - The working endpoint is /api/search with category=gene_search_result.
+    //   - Result records dropped primaryKey/name_key in favor of curie/nameKey.
+    const endpointUrl = `https://www.alliancegenome.org/api/search`
+    const jobResponse = fetch(`${endpointUrl}?category=gene_search_result&q=${encodeURIComponent(query)}&limit=20`, {
         method: 'GET',
         headers: {
             'accept': 'application/json'
@@ -118,8 +123,9 @@ export async function fetchGeneSuggestionsAutocomplete (query: string): Promise<
     })
     .then(([response, body]) => {
         if (response.ok) {
-            console.log(`Gene suggestions for query '${query}' received successfully: ${JSON.stringify(body)}`)
-            return body['results'] as GeneAutocompleteApiResponse[];
+            const results = (body?.['results'] ?? []) as unknown[]
+            console.log(`Gene suggestions for query '${query}' received: ${results.length} hits`)
+            return results as Array<Record<string, unknown>>;
         } else {
             const errMsg = 'Failure response received from gene autocomplete API.'
             console.error(errMsg)
@@ -138,12 +144,14 @@ export async function fetchGeneSuggestionsAutocomplete (query: string): Promise<
         throw e;
     });
 
-    const suggestions: GeneSuggestion[] = (await jobResponse)?.map(autocompleteResponse => {
-        return {
-            id: autocompleteResponse.primaryKey,
-            displayName: autocompleteResponse.name_key
-        }
-    })
+    const suggestions: GeneSuggestion[] = (await jobResponse)
+        .map((row): GeneSuggestion | undefined => {
+            const id = (row['curie'] ?? row['id'] ?? row['primaryKey']) as string | undefined
+            const displayName = (row['nameKey'] ?? row['name_key'] ?? row['name'] ?? row['symbol']) as string | undefined
+            if (!id || !displayName) return undefined
+            return { id, displayName }
+        })
+        .filter((s): s is GeneSuggestion => s !== undefined)
 
     return suggestions
 }
