@@ -14,6 +14,46 @@ This document is the field-by-field migration map, with the commit that ships
 each adapter, so future regressions on the same endpoints (or a rollback) can
 be diagnosed and patched quickly.
 
+## Official Alliance v9.0.0 release notes excerpt
+
+Source: <https://www.alliancegenome.org/release-notes>
+
+> **Note that rs IDs for variants are no longer used to construct URLs for
+> high-throughput variants matching the rs IDs**, because a single rs ID can
+> represent multiple individual variants for which we would like to render a
+> Variant page. Instead, **HGVS.g names are used as unique identifiers in URLs
+> to point to distinct and individual variants** in a more robust manner.
+>
+> Modified endpoints are now compliant with our LinkML data model and deliver
+> a different JSON format from previous releases:
+>
+> - `/api/allele/{id}/variants`
+> - `/api/allele/{id}/variants/download`
+> - `/api/gene/{id}`
+> - `/api/gene/{id}/alleles`
+> - `/api/gene/{id}/alleles/download`
+> - `/api/gene/{id}/allele-variant-detail`
+> - `/api/variant/{id}`
+>
+> Removed endpoints (PAVI does not consume any of these): all `/api/cache/*`,
+> all `/api/homologs/*` (homology data via the Orthology download or
+> `/api/gene/{id}/orthologs` + `/api/gene/{id}/paralogs`), and various
+> disease / expression / phenotype / geneMap / variant-alleles /
+> variant-transcripts paths.
+
+The root cause for the payload-shape changes is the move to a
+**LinkML-defined data model**. Every changed endpoint now returns a payload
+generated from that schema, which is why the envelope pattern
+(`category, searchable, ...nested object...`) and the consistent rename of
+plain-string enums into `{name, descendantCount, severityOrder?}` objects
+appear uniformly across endpoints.
+
+The rs-ID change is the official justification for `/api/variant/{id}` only
+accepting HGVS.g now. A single rs ID can represent multiple distinct
+variants (different ALT alleles at the same position), so the rs ID is no
+longer a unique key. HGVS.g (`NC_xxx.v:g.POS[REF]>[ALT]`) is. This makes
+HGVS the canonical cross-MOD variant identifier for PAVI as well.
+
 ---
 
 ## Common pattern across the reshape
