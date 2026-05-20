@@ -197,10 +197,29 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
         const MAX_ROWS = 3000;
         console.log(`Fetching allele info for gene ${geneId} (max ${MAX_DISTINCT_ALLELES} distinct alleles, ${MAX_ROWS} rows)`)
 
+        // Adapter for the new Alliance allele-variant-detail response shape.
+        // Field map vs the prior shape:
+        //   result.allele.id                          -> result.allele.curie
+        //   result.allele.symbol                      -> result.symbol            (top-level on the row)
+        //   result.allele.hasDisease / hasPhenotype   -> result.hasDisease / hasPhenotype (top-level)
+        //   result.variant.id                         -> no direct id; we use allele.curie as the variant key,
+        //                                                since each row is one allele/variant pair for filter.alleleCategory=variant
+        //   result.variant.displayName                -> result.symbol  or  variant.curatedVariantGenomicLocations[0].hgvs
+        //   result.consequence.transcript.id          -> result.consequence.variantTranscript.curie
+        //   result.consequence.transcript.name        -> result.consequence.variantTranscript.name
+        //   result.consequence.molecularConsequences  -> result.consequence.vepConsequences
+        //   result.consequence.impact                 -> result.consequence.vepImpact
+        //   result.consequence.siftPrediction         -> removed at this level (use top-level supplementalData filter values)
+        //   result.consequence.polyphenPrediction     -> removed at this level
+        //   result.consequence.proteinStartPosition   -> removed at this level
+
+        const extractAlleleKey = (row: any): string | undefined =>
+            row?.allele?.id ?? row?.allele?.curie
+
         const results = await fetchUntilDistinct({
             url: endpointUrl,
             urlSearchParams: queryParams,
-            keyExtractor: (row: any) => row?.allele?.id,
+            keyExtractor: extractAlleleKey,
             maxDistinct: MAX_DISTINCT_ALLELES,
             maxRows: MAX_ROWS,
         });
@@ -212,38 +231,64 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
 
         const parseConsequence = (raw: any): VariantConsequence | undefined => {
             if (!raw) return undefined
+            // Old shape had `raw.transcript.{id,name}`; new shape has `raw.variantTranscript.{curie,name}`.
+            const tx = raw['variantTranscript'] ?? raw['transcript']
+            const txId = tx?.['curie'] ?? tx?.['id']
+            const txName = tx?.['name']
+            const consequences = Array.isArray(raw['vepConsequences'])
+                ? raw['vepConsequences']
+                : (Array.isArray(raw['molecularConsequences']) ? raw['molecularConsequences'] : [])
+            const impact = raw['vepImpact'] ?? raw['impact']
             const proteinPosRaw = raw['proteinStartPosition']
             const proteinPos = proteinPosRaw !== undefined && proteinPosRaw !== null
                 ? Number(proteinPosRaw)
                 : undefined
             return {
-                transcriptId: raw['transcript']?.['id'],
-                transcriptName: raw['transcript']?.['name'],
-                molecularConsequences: Array.isArray(raw['molecularConsequences']) ? raw['molecularConsequences'] : [],
-                impact: raw['impact'],
+                transcriptId: txId,
+                transcriptName: txName,
+                molecularConsequences: consequences,
+                impact,
                 proteinStartPosition: Number.isFinite(proteinPos) ? proteinPos as number : undefined,
                 sift: raw['siftPrediction'],
                 polyphen: raw['polyphenPrediction'],
             }
         }
 
+        const extractVariantDisplayName = (result: any): string =>
+            result['variant']?.['displayName']
+            ?? result['symbol']
+            ?? result['variant']?.['curatedVariantGenomicLocations']?.[0]?.['hgvs']
+            ?? extractAlleleKey(result)
+            ?? 'variant'
+
         results.forEach((result: any) => {
             if (result['variant'] === undefined) {
                 console.error('Error: allele with undefined variant:', result)
                 return;
             }
-            const alleleId = result['allele']['id']
-            const variantId = result['variant']['id']
+            const alleleId = extractAlleleKey(result)
+            if (!alleleId) {
+                console.warn('Allele row without identifier, skipping:', result)
+                return
+            }
+            // Variant no longer carries its own id field in the new shape.
+            // Fall back to the allele id so the inner variant map still
+            // deduplicates correctly per (allele, variant) row.
+            const variantId = result['variant']?.['id']
+                ?? result['variant']?.['curie']
+                ?? alleleId
             const consequence = parseConsequence(result['consequence'])
+
+            const alleleSymbol = result['allele']?.['symbol'] ?? result['symbol']
 
             let allele = allelesMap.get(alleleId)
             if (allele === undefined) {
                 allele = {
                     id: alleleId,
-                    displayName: stripHtml(result['allele']['symbol']),
+                    displayName: stripHtml(alleleSymbol) || alleleId,
                     variants: new Map(),
-                    hasDisease: Boolean(result['allele']['hasDisease']),
-                    hasPhenotype: Boolean(result['allele']['hasPhenotype']),
+                    hasDisease: Boolean(result['allele']?.['hasDisease'] ?? result['hasDisease']),
+                    hasPhenotype: Boolean(result['allele']?.['hasPhenotype'] ?? result['hasPhenotype']),
                 }
                 allelesMap.set(alleleId, allele)
             }
@@ -252,7 +297,7 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
             if (variant === undefined) {
                 variant = {
                     id: variantId,
-                    displayName: result['variant']['displayName'],
+                    displayName: extractVariantDisplayName(result),
                     consequences: [],
                 }
                 allele.variants.set(variantId, variant)
