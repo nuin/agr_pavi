@@ -51,6 +51,7 @@ export function useGeneSearch(
     const searchGene = useCallback(async (queryStr: string) => {
         console.log('Searching for gene:', queryStr);
         const geneSuggestions: GeneSuggestion[] = [];
+        const seenIds = new Set<string>();
 
         // Try exact matching on ID
         const idMatch = await fetchGeneInfo(queryStr);
@@ -59,9 +60,14 @@ export function useGeneSearch(
                 id: idMatch.id,
                 displayName: `${idMatch.symbol} (${idMatch.species.shortName})`
             });
+            seenIds.add(idMatch.id);
         }
 
-        // Add autocomplete suggestions
+        // Add autocomplete suggestions, deduped against any prior id-match hit.
+        // /api/search?category=gene_search_result returns the same gene the
+        // idMatch already pulled in (since the input was an exact id), which
+        // used to give two list entries and broke the auto-select-when-one
+        // path on example load.
         let autocompleteSuggestions: GeneSuggestion[] = [];
         try {
             autocompleteSuggestions = await fetchGeneSuggestionsAutocomplete(queryStr);
@@ -72,7 +78,11 @@ export function useGeneSearch(
         }
 
         if (autocompleteSuggestions && autocompleteSuggestions.length > 0) {
-            geneSuggestions.push(...autocompleteSuggestions);
+            for (const s of autocompleteSuggestions) {
+                if (seenIds.has(s.id)) continue;
+                geneSuggestions.push(s);
+                seenIds.add(s.id);
+            }
         }
 
         console.log(`${geneSuggestions.length} gene suggestions received.`);
