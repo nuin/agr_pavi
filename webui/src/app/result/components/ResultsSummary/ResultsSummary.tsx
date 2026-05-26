@@ -13,6 +13,10 @@ export interface PairwiseIdentity {
     seq1: string;
     seq2: string;
     identity: number;
+    fullName1?: string;
+    fullName2?: string;
+    species1?: string;
+    species2?: string;
 }
 
 export interface ConservedBlock {
@@ -233,9 +237,16 @@ export function ResultsSummary({
                 }
                 const identity = compared > 0 ? (matches / compared) * 100 : 0;
                 // Get short names for display
-                const name1 = sequences[i].name.split('_')[0] || sequences[i].name.slice(0, 10);
-                const name2 = sequences[j].name.split('_')[0] || sequences[j].name.slice(0, 10);
-                pairwiseIdentities.push({ seq1: name1, seq2: name2, identity });
+                const fullName1 = sequences[i].name;
+                const fullName2 = sequences[j].name;
+                const name1 = fullName1.split('_')[0] || fullName1.slice(0, 10);
+                const name2 = fullName2.split('_')[0] || fullName2.slice(0, 10);
+                const species1 = seqInfoDict?.[fullName1]?.species ?? undefined;
+                const species2 = seqInfoDict?.[fullName2]?.species ?? undefined;
+                pairwiseIdentities.push({
+                    seq1: name1, seq2: name2, identity,
+                    fullName1, fullName2, species1, species2,
+                });
             }
         }
 
@@ -494,13 +505,24 @@ export function ResultsSummary({
 
                 {/* Pairwise Identity matrix */}
                 {stats.pairwiseIdentities.length > 0 && (() => {
-                    // Preserve first-appearance order of sequence labels across pairs.
+                    // Preserve first-appearance order of sequence labels and
+                    // remember the full transcript name + species per label.
                     const order: string[] = []
                     const seen = new Set<string>()
-                    for (const p of stats.pairwiseIdentities) {
-                        for (const n of [p.seq1, p.seq2]) {
-                            if (!seen.has(n)) { seen.add(n); order.push(n) }
+                    const meta = new Map<string, { fullName?: string, species?: string }>()
+                    const remember = (name: string, fullName?: string, species?: string) => {
+                        if (!seen.has(name)) { seen.add(name); order.push(name) }
+                        const existing = meta.get(name)
+                        if (!existing || (!existing.species && species) || (!existing.fullName && fullName)) {
+                            meta.set(name, {
+                                fullName: fullName ?? existing?.fullName,
+                                species: species ?? existing?.species,
+                            })
                         }
+                    }
+                    for (const p of stats.pairwiseIdentities) {
+                        remember(p.seq1, p.fullName1, p.species1)
+                        remember(p.seq2, p.fullName2, p.species2)
                     }
                     // Symmetric lookup keyed by sorted pair.
                     const key = (a: string, b: string) =>
@@ -509,44 +531,110 @@ export function ResultsSummary({
                     for (const p of stats.pairwiseIdentities) {
                         identityByPair.set(key(p.seq1, p.seq2), p.identity)
                     }
-                    const cellClass = (v: number) =>
-                        v >= 70 ? styles.highIdentity
-                            : v >= 50 ? styles.medIdentity
-                                : styles.lowIdentity
+                    // Continuous green-to-red gradient on identity. Cell text
+                    // stays readable across the range with a single contrast
+                    // breakpoint at 50%.
+                    const cellStyle = (v: number): React.CSSProperties => {
+                        // hue 0 (red) -> 120 (green) by identity 0..100
+                        const hue = Math.round((v / 100) * 120)
+                        return {
+                            background: `hsl(${hue}, 72%, 88%)`,
+                            color: v >= 50 ? '#14532d' : '#7f1d1d',
+                        }
+                    }
+                    const speciesAbbr = (s?: string): string | undefined => {
+                        if (!s) return undefined
+                        const parts = s.split(' ')
+                        if (parts.length < 2) return s
+                        return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
+                    }
+                    const headerTitle = (n: string) => {
+                        const m = meta.get(n)
+                        const lines = [
+                            m?.fullName ?? n,
+                            m?.species ? `Species: ${m.species}` : null,
+                        ].filter(Boolean)
+                        return lines.join('\n')
+                    }
+                    const cellTitle = (row: string, col: string, v: number) => {
+                        const rm = meta.get(row)
+                        const cm = meta.get(col)
+                        const r = [rm?.fullName ?? row, rm?.species].filter(Boolean).join(' — ')
+                        const c = [cm?.fullName ?? col, cm?.species].filter(Boolean).join(' — ')
+                        return `${r}\nvs\n${c}\n${v.toFixed(2)}% identity`
+                    }
                     return (
                         <div className={styles.pairwiseSection}>
-                            <span className={styles.sectionLabel}>Pairwise Identity:</span>
+                            <div className={styles.matrixHeading}>
+                                <span className={styles.sectionLabel}>Pairwise Identity</span>
+                                <span className={styles.matrixLegend}>
+                                    <span className={styles.legendSwatch} style={cellStyle(20)} />
+                                    <span>low</span>
+                                    <span className={styles.legendSwatch} style={cellStyle(50)} />
+                                    <span>mid</span>
+                                    <span className={styles.legendSwatch} style={cellStyle(85)} />
+                                    <span>high</span>
+                                </span>
+                            </div>
                             <div className={styles.pairwiseMatrixWrap}>
                                 <table className={styles.pairwiseMatrix}>
                                     <thead>
                                         <tr>
                                             <th />
-                                            {order.map(n => (
-                                                <th key={n} className={styles.matrixHeader}>{n}</th>
-                                            ))}
+                                            {order.map(n => {
+                                                const m = meta.get(n)
+                                                return (
+                                                    <th key={n} className={styles.matrixHeader} title={headerTitle(n)}>
+                                                        <div className={styles.headerLabel}>{n}</div>
+                                                        {m?.species && (
+                                                            <div className={styles.headerSpecies}>
+                                                                {speciesAbbr(m.species)}
+                                                            </div>
+                                                        )}
+                                                    </th>
+                                                )
+                                            })}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {order.map((rowName) => (
-                                            <tr key={rowName}>
-                                                <th className={styles.matrixHeader}>{rowName}</th>
-                                                {order.map((colName) => {
-                                                    if (rowName === colName) {
+                                        {order.map((rowName) => {
+                                            const m = meta.get(rowName)
+                                            return (
+                                                <tr key={rowName}>
+                                                    <th className={styles.matrixHeader} title={headerTitle(rowName)}>
+                                                        <div className={styles.headerLabel}>{rowName}</div>
+                                                        {m?.species && (
+                                                            <div className={styles.headerSpecies}>
+                                                                {speciesAbbr(m.species)}
+                                                            </div>
+                                                        )}
+                                                    </th>
+                                                    {order.map((colName) => {
+                                                        if (rowName === colName) {
+                                                            return (
+                                                                <td key={colName} className={`${styles.matrixCell} ${styles.matrixDiag}`}>
+                                                                    —
+                                                                </td>
+                                                            )
+                                                        }
+                                                        const v = identityByPair.get(key(rowName, colName))
+                                                        if (v === undefined) {
+                                                            return <td key={colName} className={styles.matrixCell} />
+                                                        }
                                                         return (
-                                                            <td key={colName} className={`${styles.matrixCell} ${styles.matrixDiag}`}>
-                                                                —
+                                                            <td
+                                                                key={colName}
+                                                                className={styles.matrixCell}
+                                                                style={cellStyle(v)}
+                                                                title={cellTitle(rowName, colName, v)}
+                                                            >
+                                                                {v.toFixed(1)}%
                                                             </td>
                                                         )
-                                                    }
-                                                    const v = identityByPair.get(key(rowName, colName))
-                                                    return (
-                                                        <td key={colName} className={`${styles.matrixCell} ${v !== undefined ? cellClass(v) : ''}`}>
-                                                            {v !== undefined ? `${v.toFixed(1)}%` : ''}
-                                                        </td>
-                                                    )
-                                                })}
-                                            </tr>
-                                        ))}
+                                                    })}
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
