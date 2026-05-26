@@ -370,6 +370,72 @@
     color: var(--agr-gray-700);
 }
 
+/* Matrix view */
+.pairwiseMatrixWrap {
+    margin-top: 0.5rem;
+    overflow-x: auto;
+}
+
+.pairwiseMatrix {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.8125rem;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    background: white;
+    border: 1px solid var(--agr-gray-200);
+    border-radius: 4px;
+}
+
+.pairwiseMatrix th,
+.pairwiseMatrix td {
+    padding: 0.4rem 0.625rem;
+    text-align: center;
+    border-bottom: 1px solid var(--agr-gray-100);
+    border-right: 1px solid var(--agr-gray-100);
+    white-space: nowrap;
+}
+
+.pairwiseMatrix tr:last-child th,
+.pairwiseMatrix tr:last-child td {
+    border-bottom: none;
+}
+
+.pairwiseMatrix th:last-child,
+.pairwiseMatrix td:last-child {
+    border-right: none;
+}
+
+.matrixHeader {
+    background: var(--agr-gray-50);
+    font-weight: 600;
+    color: var(--agr-gray-700);
+}
+
+.matrixCell {
+    font-weight: 600;
+}
+
+.matrixCell.highIdentity {
+    background: var(--agr-success-light);
+    color: var(--agr-success-dark);
+}
+
+.matrixCell.medIdentity {
+    background: var(--agr-warning-light);
+    color: var(--agr-warning-dark);
+}
+
+.matrixCell.lowIdentity {
+    background: var(--agr-gray-50);
+    color: var(--agr-gray-600);
+}
+
+.matrixDiag {
+    background: var(--agr-gray-100);
+    color: var(--agr-gray-400);
+    font-weight: 400;
+}
+
 /* Job Details */
 .detailsSection {
     display: flex;

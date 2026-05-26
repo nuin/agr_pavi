@@ -492,27 +492,67 @@ export function ResultsSummary({
                     </div>
                 )}
 
-                {/* Pairwise Identity */}
-                {stats.pairwiseIdentities.length > 0 && (
-                    <div className={styles.pairwiseSection}>
-                        <span className={styles.sectionLabel}>Pairwise Identity:</span>
-                        <div className={styles.pairwiseGrid}>
-                            {stats.pairwiseIdentities.map((pair, idx) => (
-                                <div key={idx} className={styles.pairwiseItem}>
-                                    <span className={styles.pairwiseNames}>
-                                        {pair.seq1} vs {pair.seq2}
-                                    </span>
-                                    <span className={`${styles.pairwiseValue} ${
-                                        pair.identity >= 70 ? styles.highIdentity :
-                                        pair.identity >= 50 ? styles.medIdentity : styles.lowIdentity
-                                    }`}>
-                                        {pair.identity.toFixed(1)}%
-                                    </span>
-                                </div>
-                            ))}
+                {/* Pairwise Identity matrix */}
+                {stats.pairwiseIdentities.length > 0 && (() => {
+                    // Preserve first-appearance order of sequence labels across pairs.
+                    const order: string[] = []
+                    const seen = new Set<string>()
+                    for (const p of stats.pairwiseIdentities) {
+                        for (const n of [p.seq1, p.seq2]) {
+                            if (!seen.has(n)) { seen.add(n); order.push(n) }
+                        }
+                    }
+                    // Symmetric lookup keyed by sorted pair.
+                    const key = (a: string, b: string) =>
+                        a < b ? `${a}|${b}` : `${b}|${a}`
+                    const identityByPair = new Map<string, number>()
+                    for (const p of stats.pairwiseIdentities) {
+                        identityByPair.set(key(p.seq1, p.seq2), p.identity)
+                    }
+                    const cellClass = (v: number) =>
+                        v >= 70 ? styles.highIdentity
+                            : v >= 50 ? styles.medIdentity
+                                : styles.lowIdentity
+                    return (
+                        <div className={styles.pairwiseSection}>
+                            <span className={styles.sectionLabel}>Pairwise Identity:</span>
+                            <div className={styles.pairwiseMatrixWrap}>
+                                <table className={styles.pairwiseMatrix}>
+                                    <thead>
+                                        <tr>
+                                            <th />
+                                            {order.map(n => (
+                                                <th key={n} className={styles.matrixHeader}>{n}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {order.map((rowName) => (
+                                            <tr key={rowName}>
+                                                <th className={styles.matrixHeader}>{rowName}</th>
+                                                {order.map((colName) => {
+                                                    if (rowName === colName) {
+                                                        return (
+                                                            <td key={colName} className={`${styles.matrixCell} ${styles.matrixDiag}`}>
+                                                                —
+                                                            </td>
+                                                        )
+                                                    }
+                                                    const v = identityByPair.get(key(rowName, colName))
+                                                    return (
+                                                        <td key={colName} className={`${styles.matrixCell} ${v !== undefined ? cellClass(v) : ''}`}>
+                                                            {v !== undefined ? `${v.toFixed(1)}%` : ''}
+                                                        </td>
+                                                    )
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                })()}
 
                 {/* Job Details */}
                 <div className={styles.detailsSection}>
