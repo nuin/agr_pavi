@@ -8,11 +8,52 @@ WebUI is broken.
 
 ```bash
 cd tests/cli
-make install     # creates .venv, installs pavi-cli in editable mode
-make list        # prints the example catalog
+make install         # creates .venv, installs pavi-cli in editable mode
+make install-test    # same, plus pytest for unit tests
+make list            # prints the example catalog
 ```
 
 `pyproject.toml` requires Python 3.12 — the same version the API uses.
+
+## Verify the Alliance API shape (fast, no pipeline)
+
+The `verify-alliance` command walks every gene (and pinned allele) in
+`tests/examples/catalog.json` and checks that the live Alliance API
+still returns a parseable response under the v9 shape adapters in
+`pavi_cli/alliance_client.py`. This is the cheap CI signal — no
+pipeline run, no payload fixture required.
+
+```bash
+make verify-alliance                              # full catalog vs prod
+make verify-alliance-test                         # full catalog vs test.alliancegenome.org
+.venv/bin/pavi-cli verify-alliance --example tp53-orthologs
+.venv/bin/pavi-cli verify-alliance --no-alleles   # gene shape only
+```
+
+A failure here means either the catalog is out of date (an allele was
+retired) or the Alliance API changed shape again. The first is fixed by
+editing `catalog.json`; the second by extending the legacy-shape
+fallback in `alliance_client.adapt_*`.
+
+### Prod vs test endpoint
+
+CI runs the verification against **both** `https://www.alliancegenome.org`
+(prod) and `https://test.alliancegenome.org`. `test` is treated as the
+hard signal (red = real catalog or shape regression); `prod` is soft, so
+a transient prod-only blip (partial ES re-index, deploy in-flight) does
+not block PRs.
+
+If only one of the two is red, compare the JSON reports to localize the
+issue before editing the catalog.
+
+## Run the adapter unit tests
+
+```bash
+make test
+```
+
+These tests use captured JSON fixtures (no network) and lock the
+field map so a silent shape regression fails CI immediately.
 
 ## Capture a payload fixture (one-time per example)
 
@@ -87,3 +128,15 @@ See `tests/examples/types.ts` for the schema and
 - Strict golden-file diff is intentionally not implemented yet — see
   the open-questions section of
   `docs/plans/2026-06-08-example-validation-and-e2e-testing.md`.
+
+## Phase 2 additions
+
+- `pavi_cli/alliance_client.py` — Python port of the v9 response
+  adapters used by the WebUI and pipeline. Adapter functions accept
+  the v9 nested shape and fall back to the legacy flat shape so a
+  rollback would not break the harness.
+- `pavi_cli/verify.py` + the `verify-alliance` command — walks the
+  catalog against the live Alliance API to catch shape / catalog
+  drift on every PR.
+- `.github/workflows/cli-examples-quick.yml` — runs unit tests on
+  every PR and the Alliance shape verification nightly.

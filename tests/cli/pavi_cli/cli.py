@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
 
 import click
 
+from .alliance_client import AllianceClient
+from .alliance_client import DEFAULT_BASE_URL as ALLIANCE_DEFAULT_BASE_URL
 from .api_client import DEFAULT_BASE_URL, DEFAULT_TIMEOUT_S, PaviApiClient
 from .catalog import find_example, load_catalog
 from .payloads import extract_from_local_store, payload_fixture_path, save_payload
 from .runner import format_report, run_example, write_json_report
+from .verify import format_verification_report, verify_catalog, verify_example
 
 
 @click.group()
@@ -90,6 +94,59 @@ def capture_payload(example_id: str, job_uuid: str, jobs_db: str) -> None:
 def payload_path(example_id: str) -> None:
     """Print where the payload fixture for an example would be read from."""
     click.echo(payload_fixture_path(example_id))
+
+
+@main.command("verify-alliance")
+@click.option(
+    "--alliance-base-url",
+    "alliance_base_url",
+    default=ALLIANCE_DEFAULT_BASE_URL,
+    show_default=True,
+    help="Base URL of the Alliance API.",
+)
+@click.option(
+    "--example",
+    "example_id",
+    default=None,
+    help="Verify only this catalog example. Omit to verify all.",
+)
+@click.option(
+    "--no-alleles",
+    is_flag=True,
+    default=False,
+    help="Skip the allele-variant-detail lookup (gene checks only).",
+)
+@click.option(
+    "--json-report",
+    "json_report",
+    type=click.Path(dir_okay=False),
+    default=None,
+    help="Write a machine-readable JSON report to this path.",
+)
+def verify_alliance(
+    alliance_base_url: str,
+    example_id: str | None,
+    no_alleles: bool,
+    json_report: str | None,
+) -> None:
+    """Check that every catalog gene (and pinned allele) still resolves under the live Alliance API."""
+    catalog = load_catalog()
+    client = AllianceClient(base_url=alliance_base_url)
+    if example_id:
+        example = find_example(catalog, example_id)
+        if example is None:
+            click.echo(f"Unknown example {example_id!r}", err=True)
+            sys.exit(2)
+        results = [verify_example(client, example, check_alleles=not no_alleles)]
+    else:
+        results = verify_catalog(client, catalog, check_alleles=not no_alleles)
+
+    click.echo(format_verification_report(results))
+    if json_report:
+        with open(json_report, "w") as fh:
+            json.dump([r.to_dict() for r in results], fh, indent=2)
+        click.echo(f"\nJSON report written to {json_report}")
+    sys.exit(0 if all(r.ok for r in results) else 1)
 
 
 if __name__ == "__main__":
