@@ -156,8 +156,11 @@ export async function fetchGeneSuggestionsAutocomplete (query: string): Promise<
     return suggestions
 }
 
-export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
+export async function fetchAlleles (geneId: string, requiredAlleleIds: string[] = []): Promise<AlleleInfo[]> {
     console.log(`Fetching alleles for gene: ${geneId}`)
+    if (requiredAlleleIds.length > 0) {
+        console.log(`  requiring ${requiredAlleleIds.length} allele(s) regardless of distinct cap: ${requiredAlleleIds.join(', ')}`)
+    }
 
     const endpointUrl = `https://www.alliancegenome.org/api/gene/${geneId}/allele-variant-detail`
 
@@ -237,8 +240,19 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
             keyExtractor: extractAlleleKey,
             maxDistinct: MAX_DISTINCT_ALLELES,
             maxRows: MAX_ROWS,
+            requiredKeys: requiredAlleleIds,
         });
-        console.log(`Allele info for gene ${geneId} received successfully.`)
+        console.log(`Allele info for gene ${geneId} received successfully (${results.length} rows)`)
+        if (requiredAlleleIds.length > 0) {
+            // Surface any catalog/example IDs the paginated fetch failed to
+            // surface, so a silent dropout (the bug this whole requiredKeys
+            // path was added to fix) shows up immediately on the next run.
+            const seen = new Set(results.map(extractAlleleKey).filter(Boolean) as string[])
+            const missing = requiredAlleleIds.filter(id => !seen.has(id))
+            if (missing.length > 0) {
+                console.warn(`  ${missing.length}/${requiredAlleleIds.length} required allele(s) NOT found: ${missing.join(', ')}`)
+            }
+        }
 
         const allelesMap = new Map<string, AlleleInfo>()
 

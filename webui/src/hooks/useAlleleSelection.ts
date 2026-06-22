@@ -59,7 +59,12 @@ export function useAlleleSelection(
             console.log(`Lazy-loading alleles for gene: ${gene.id}`);
             setAlleleListLoading(true);  // Set immediately before any async work
             try {
-                const alleles = await fetchAlleles(gene.id);
+                // Forward the catalog-supplied initialAlleleIds so the
+                // server-side paginator keeps fetching past the distinct-cap
+                // until every required allele has been seen — otherwise
+                // heavily-annotated genes (e.g. Trp53) silently truncate the
+                // curated alleles we want to pre-select.
+                const alleles = await fetchAlleles(gene.id, initialAlleleIds ?? []);
                 console.log(`${alleles.length} alleles received.`);
                 setAlleleList(alleles);
                 setAlleleListLoaded(true);
@@ -69,7 +74,7 @@ export function useAlleleSelection(
                 setAlleleListLoading(false);
             }
         }
-    }, [gene, alleleList.length, alleleListLoading]);
+    }, [gene, alleleList.length, alleleListLoading, initialAlleleIds]);
 
     const processAlleleEntry = useCallback(
         async (alleleIds: string[]) => {

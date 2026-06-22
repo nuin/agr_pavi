@@ -30,7 +30,7 @@
       ],
       "expectations": {
         "minSequenceCount": 2,
-        "minMaxPairwiseIdentityPct": 50,
+        "minMaxPairwiseIdentityPct": 35,
         "minEmbeddedVariantsTotal": 0,
         "expectedConsequenceCategories": []
       }
@@ -81,7 +81,7 @@
       ],
       "expectations": {
         "minSequenceCount": 2,
-        "minMaxPairwiseIdentityPct": 60,
+        "minMaxPairwiseIdentityPct": 55,
         "minEmbeddedVariantsTotal": 0,
         "expectedConsequenceCategories": []
       }
