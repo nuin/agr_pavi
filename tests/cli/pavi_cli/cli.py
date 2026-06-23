@@ -15,7 +15,9 @@ from .api_client import DEFAULT_BASE_URL, DEFAULT_TIMEOUT_S, PaviApiClient
 from .catalog import find_example, load_catalog
 from .payloads import extract_from_local_store, payload_fixture_path, save_payload
 from .runner import format_report, run_example, write_json_report
+from .uniprot_client import DEFAULT_UNIPROT_BASE, UniProtClient
 from .verify import format_verification_report, verify_catalog, verify_example
+from .verify_sequences import format_sequence_report, verify_example_sequences
 
 
 @click.group()
@@ -147,6 +149,74 @@ def verify_alliance(
             json.dump([r.to_dict() for r in results], fh, indent=2)
         click.echo(f"\nJSON report written to {json_report}")
     sys.exit(0 if all(r.ok for r in results) else 1)
+
+
+@main.command("verify-sequences")
+@click.option("--example", "example_id", required=True, help="Catalog example id.")
+@click.option(
+    "--job-uuid", "job_uuid", default=None,
+    help="Completed job UUID to fetch the alignment from (needs --api).",
+)
+@click.option(
+    "--alignment-file", "alignment_file", default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Local alignment-output.aln to verify instead of a live job.",
+)
+@click.option("--api", "base_url", default=DEFAULT_BASE_URL, show_default=True)
+@click.option(
+    "--uniprot-base-url", "uniprot_base_url",
+    default=DEFAULT_UNIPROT_BASE, show_default=True,
+)
+@click.option(
+    "--min-identity", "min_identity", default=95.0, show_default=True, type=float,
+    help="Fail a gene if its best UniProt overlap-identity falls below this %.",
+)
+@click.option(
+    "--min-coverage", "min_coverage", default=0.0, show_default=True, type=float,
+    help="Optionally also fail if the produced protein covers less than this %% "
+         "of the canonical (0 = report coverage but don't fail on it).",
+)
+@click.option("--json-report", "json_report", type=click.Path(dir_okay=False))
+def verify_sequences(
+    example_id: str,
+    job_uuid: str | None,
+    alignment_file: str | None,
+    base_url: str,
+    uniprot_base_url: str,
+    min_identity: float,
+    min_coverage: float,
+    json_report: str | None,
+) -> None:
+    """Compare a produced alignment's proteins against UniProt canonical sequences."""
+    examples = load_catalog()
+    example = find_example(examples, example_id)
+    if example is None:
+        click.echo(f"Unknown example {example_id!r}", err=True)
+        sys.exit(2)
+
+    if not job_uuid and not alignment_file:
+        click.echo("Provide either --job-uuid or --alignment-file.", err=True)
+        sys.exit(2)
+
+    if alignment_file:
+        alignment_bytes = Path(alignment_file).read_bytes()
+    else:
+        client = PaviApiClient(base_url=base_url)
+        alignment_bytes = client.get_alignment(job_uuid)  # type: ignore[arg-type]
+
+    result = verify_example_sequences(
+        example,
+        alignment_bytes,
+        client=UniProtClient(base_url=uniprot_base_url),
+        min_identity_pct=min_identity,
+        min_coverage_pct=min_coverage,
+    )
+    click.echo(format_sequence_report(result))
+    if json_report:
+        with open(json_report, "w") as fh:
+            json.dump(result.to_dict(), fh, indent=2)
+        click.echo(f"\nJSON report written to {json_report}")
+    sys.exit(0 if result.ok else 1)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ class CatalogGene:
     geneName: str
     species: str
     alleleIds: tuple[str, ...] = ()
+    uniprotAccession: str | None = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,7 @@ def _to_example(item: dict) -> CatalogExample:
                 geneName=g["geneName"],
                 species=g["species"],
                 alleleIds=tuple(g.get("alleleIds") or ()),
+                uniprotAccession=g.get("uniprotAccession"),
             )
             for g in item["genes"]
         ),

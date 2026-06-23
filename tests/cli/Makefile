@@ -19,6 +19,8 @@ help:
 	@echo "  make list                             show the example catalog"
 	@echo "  make verify-alliance                  catalog Alliance shape check against prod"
 	@echo "  make verify-alliance-test             same, against test.alliancegenome.org"
+	@echo "  pavi-cli verify-sequences --example <id> --alignment-file <aln>"
+	@echo "                                        compare produced proteins vs UniProt canonical"
 	@echo "  make test                             run unit tests"
 	@echo "  make run-quick EXAMPLE=<id>           run one example end-to-end"
 	@echo "  make run-all                          run every example, fail on first miss"

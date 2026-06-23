@@ -8,9 +8,9 @@
       "category": "cross-species",
       "description": "Compare the tumor suppressor protein p53 across human, mouse, and zebrafish",
       "genes": [
-        { "geneId": "HGNC:11998", "geneName": "TP53", "species": "Homo sapiens" },
-        { "geneId": "MGI:98834", "geneName": "Trp53", "species": "Mus musculus" },
-        { "geneId": "ZFIN:ZDB-GENE-990415-270", "geneName": "tp53", "species": "Danio rerio" }
+        { "geneId": "HGNC:11998", "geneName": "TP53", "species": "Homo sapiens", "uniprotAccession": "P04637" },
+        { "geneId": "MGI:98834", "geneName": "Trp53", "species": "Mus musculus", "uniprotAccession": "P02340" },
+        { "geneId": "ZFIN:ZDB-GENE-990415-270", "geneName": "tp53", "species": "Danio rerio", "uniprotAccession": "P79734" }
       ],
       "expectations": {
         "minSequenceCount": 3,
@@ -25,8 +25,8 @@
       "category": "basic",
       "description": "Align BRCA1 DNA repair protein between human and mouse",
       "genes": [
-        { "geneId": "HGNC:1100", "geneName": "BRCA1", "species": "Homo sapiens" },
-        { "geneId": "MGI:104537", "geneName": "Brca1", "species": "Mus musculus" }
+        { "geneId": "HGNC:1100", "geneName": "BRCA1", "species": "Homo sapiens", "uniprotAccession": "P38398" },
+        { "geneId": "MGI:104537", "geneName": "Brca1", "species": "Mus musculus", "uniprotAccession": "P48754" }
       ],
       "expectations": {
         "minSequenceCount": 2,
@@ -41,9 +41,9 @@
       "category": "advanced",
       "description": "Highly conserved eye development transcription factor",
       "genes": [
-        { "geneId": "HGNC:8620", "geneName": "PAX6", "species": "Homo sapiens" },
-        { "geneId": "MGI:97490", "geneName": "Pax6", "species": "Mus musculus" },
-        { "geneId": "FB:FBgn0004170", "geneName": "ey", "species": "Drosophila melanogaster" },
+        { "geneId": "HGNC:8620", "geneName": "PAX6", "species": "Homo sapiens", "uniprotAccession": "P26367" },
+        { "geneId": "MGI:97490", "geneName": "Pax6", "species": "Mus musculus", "uniprotAccession": "P63015" },
+        { "geneId": "FB:FBgn0004170", "geneName": "ey", "species": "Drosophila melanogaster", "uniprotAccession": "O18381" },
         { "geneId": "WB:WBGene00003927", "geneName": "pax-6", "species": "Caenorhabditis elegans" }
       ],
       "expectations": {
@@ -59,8 +59,8 @@
       "category": "advanced",
       "description": "Beta-actin cytoskeletal protein - one of the most conserved proteins",
       "genes": [
-        { "geneId": "HGNC:132", "geneName": "ACTB", "species": "Homo sapiens" },
-        { "geneId": "MGI:87904", "geneName": "Actb", "species": "Mus musculus" },
+        { "geneId": "HGNC:132", "geneName": "ACTB", "species": "Homo sapiens", "uniprotAccession": "P60709" },
+        { "geneId": "MGI:87904", "geneName": "Actb", "species": "Mus musculus", "uniprotAccession": "P60710" },
         { "geneId": "ZFIN:ZDB-GENE-000329-3", "geneName": "actb1", "species": "Danio rerio" }
       ],
       "expectations": {
@@ -76,8 +76,8 @@
       "category": "cross-species",
       "description": "HSP70 chaperone - highly conserved stress response protein",
       "genes": [
-        { "geneId": "WB:WBGene00002007", "geneName": "hsp-1", "species": "Caenorhabditis elegans" },
-        { "geneId": "FB:FBgn0013278", "geneName": "Hsc70-4", "species": "Drosophila melanogaster" }
+        { "geneId": "WB:WBGene00002007", "geneName": "hsp-1", "species": "Caenorhabditis elegans", "uniprotAccession": "P09446" },
+        { "geneId": "FB:FBgn0013278", "geneName": "Hsc70-4", "species": "Drosophila melanogaster", "uniprotAccession": "P11147" }
       ],
       "expectations": {
         "minSequenceCount": 2,
@@ -92,8 +92,8 @@
       "category": "basic",
       "description": "Superoxide dismutase - ALS disease model comparison",
       "genes": [
-        { "geneId": "MGI:98351", "geneName": "Sod1", "species": "Mus musculus" },
-        { "geneId": "RGD:3731", "geneName": "Sod1", "species": "Rattus norvegicus" }
+        { "geneId": "MGI:98351", "geneName": "Sod1", "species": "Mus musculus", "uniprotAccession": "P08228" },
+        { "geneId": "RGD:3731", "geneName": "Sod1", "species": "Rattus norvegicus", "uniprotAccession": "P07632" }
       ],
       "expectations": {
         "minSequenceCount": 2,
@@ -108,8 +108,8 @@
       "category": "cross-species",
       "description": "Cardiac myosin heavy chain - heart development model",
       "genes": [
-        { "geneId": "ZFIN:ZDB-GENE-031112-1", "geneName": "myh6", "species": "Danio rerio" },
-        { "geneId": "HGNC:7576", "geneName": "MYH6", "species": "Homo sapiens" }
+        { "geneId": "ZFIN:ZDB-GENE-031112-1", "geneName": "myh6", "species": "Danio rerio", "uniprotAccession": "Q6YJK1" },
+        { "geneId": "HGNC:7576", "geneName": "MYH6", "species": "Homo sapiens", "uniprotAccession": "P13533" }
       ],
       "expectations": {
         "minSequenceCount": 2,
@@ -125,7 +125,7 @@
       "description": "Mouse Trp53 with 4 cancer-associated missense alleles (R270H, P275S, N236S, R334H) plus one 3' UTR variant (demonstrates non-coding filter), compared to human and zebrafish orthologs",
       "genes": [
         {
-          "geneId": "MGI:98834", "geneName": "Trp53", "species": "Mus musculus",
+          "geneId": "MGI:98834", "geneName": "Trp53", "species": "Mus musculus", "uniprotAccession": "P02340",
           "alleleIds": [
             "MGI:6393635",
             "MGI:3039266",
@@ -134,8 +134,8 @@
             "MGI:6718305"
           ]
         },
-        { "geneId": "HGNC:11998", "geneName": "TP53", "species": "Homo sapiens" },
-        { "geneId": "ZFIN:ZDB-GENE-990415-270", "geneName": "tp53", "species": "Danio rerio" }
+        { "geneId": "HGNC:11998", "geneName": "TP53", "species": "Homo sapiens", "uniprotAccession": "P04637" },
+        { "geneId": "ZFIN:ZDB-GENE-990415-270", "geneName": "tp53", "species": "Danio rerio", "uniprotAccession": "P79734" }
       ],
       "expectations": {
         "minSequenceCount": 3,
@@ -151,7 +151,7 @@
       "description": "Mouse Sod1 with ALS-associated alleles compared to rat ortholog — classic neurodegeneration model",
       "genes": [
         {
-          "geneId": "MGI:98351", "geneName": "Sod1", "species": "Mus musculus",
+          "geneId": "MGI:98351", "geneName": "Sod1", "species": "Mus musculus", "uniprotAccession": "P08228",
           "alleleIds": [
             "MGI:6157439",
             "MGI:6157441",
@@ -160,7 +160,7 @@
             "MGI:5575771"
           ]
         },
-        { "geneId": "RGD:3731", "geneName": "Sod1", "species": "Rattus norvegicus" }
+        { "geneId": "RGD:3731", "geneName": "Sod1", "species": "Rattus norvegicus", "uniprotAccession": "P07632" }
       ],
       "expectations": {
         "minSequenceCount": 2,

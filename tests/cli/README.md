@@ -46,6 +46,42 @@ not block PRs.
 If only one of the two is red, compare the JSON reports to localize the
 issue before editing the catalog.
 
+## Verify alignment proteins against UniProt (external truth check)
+
+`verify-alliance` and the in-process assertions only check that the
+pipeline output is *internally* coherent. `verify-sequences` adds an
+**external** check: for every catalog gene that carries a
+`uniprotAccession`, it fetches the canonical protein from UniProt and
+compares it against the best-matching sequence in a produced alignment.
+
+```bash
+# Against a completed job on a running API:
+.venv/bin/pavi-cli verify-sequences --example tp53-orthologs --job-uuid <uuid> --api http://localhost:8000
+
+# Against a local alignment file (no services needed):
+.venv/bin/pavi-cli verify-sequences --example tp53-orthologs \
+    --alignment-file path/to/alignment-output.aln
+```
+
+Each gene reports two numbers:
+
+| Metric | Meaning | Catches |
+|---|---|---|
+| `id` (identity) | % identity over the *aligned overlap* | Wrong gene / species / a genuinely different protein. |
+| `cov` (coverage) | overlap as a % of the canonical length | A truncated or alternative isoform (the residues match, but not all of them are present). |
+
+A gene **fails** only when overlap-identity drops below `--min-identity`
+(default 95%). Coverage is reported and noted (`partial isoform`) but
+does not fail by default, since PAVI legitimately lets users pick any
+transcript — add `--min-coverage` to enforce a floor. Matching is done
+by sequence, not by row name, so genes that share a symbol across
+species (mouse/rat `Sod1`) still map to the right row.
+
+Genes without a `uniprotAccession` are skipped and listed (currently
+worm `pax-6` and zebrafish `actb1`, which lack a clean canonical
+mapping). A wrong accession is worse than none — it would produce false
+failures — so leave it unset rather than guess.
+
 ## Run the adapter unit tests
 
 ```bash

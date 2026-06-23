@@ -10,6 +10,14 @@ export interface CatalogGene {
     readonly geneName: string
     readonly species: string
     readonly alleleIds?: readonly string[]
+    /**
+     * UniProt accession for the canonical protein isoform of this gene,
+     * used by `pavi-cli verify-sequences` as an external truth check
+     * against the pipeline's translated protein output. Optional — leave
+     * unset for genes without a clear canonical (e.g. paralogs where the
+     * UniProt mapping is ambiguous).
+     */
+    readonly uniprotAccession?: string
 }
 
 export interface CatalogExpectations {
