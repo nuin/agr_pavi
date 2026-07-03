@@ -40,6 +40,10 @@ jest.mock('https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib
 // Mock server Actions
 jest.mock("../serverActions")
 
+jest.mock('../../TranscriptViewer', () => ({
+    TranscriptViewerDialog: () => null,
+}));
+
 // Mock seqpanel transcript retrieval
 class mockFeature {
     uniqueId: string

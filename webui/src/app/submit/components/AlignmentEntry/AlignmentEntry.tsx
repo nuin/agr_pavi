@@ -2,6 +2,7 @@
 
 import { FloatLabel } from 'primereact/floatlabel';
 import { AutoComplete, AutoCompleteState, AutoCompletePassThroughMethodOptions } from 'primereact/autocomplete';
+import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { MultiSelect } from 'primereact/multiselect';
 import React, { createRef, FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -11,6 +12,7 @@ import { AlignmentEntryStatus, AlleleInfo } from './types';
 import { useAlleleFilters } from './useAlleleFilters';
 import { AlleleFilterPanel } from './AlleleFilterPanel';
 import { JobSumbissionPayloadRecord, InputPayloadPart, InputPayloadDispatchAction } from '../JobSubmitForm/types';
+import { TranscriptViewerDialog } from '../TranscriptViewer';
 
 // Note: dynamic import of stage vs main src is currently not possible on client nor server (2024/07/25).
 import { getSingleGenomeLocation } from 'https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib/utils.js';
@@ -82,6 +84,7 @@ const normalizeChromosomeId = (chromosome: string, _taxonId: string): string => 
 
 export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: AlignmentEntryProps) => {
     const [setupCompleted, setSetupCompleted] = useState<boolean>(false);
+    const [transcriptViewerVisible, setTranscriptViewerVisible] = useState(false);
 
     // Refs for form elements
     const geneMessageRef: React.RefObject<Message | null> = createRef();
@@ -420,6 +423,21 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                     <label htmlFor={`transcripts-${props.index}`}>Transcripts</label>
                 </FloatLabel>
             </div>
+            <Button
+                label="View transcripts"
+                icon="pi pi-chart-bar"
+                className="p-button-text p-button-sm"
+                type="button"
+                disabled={!geneSearch.gene}
+                onClick={() => setTranscriptViewerVisible(true)}
+                aria-label="View transcripts"
+            />
+            <TranscriptViewerDialog
+                visible={transcriptViewerVisible}
+                gene={geneSearch.gene}
+                release={props.agrjBrowseDataRelease}
+                onHide={() => setTranscriptViewerVisible(false)}
+            />
 
             {/* 3. Allele Selection (optional) */}
             <div style={{ flex: '1 1 0', minWidth: 0 }}>
