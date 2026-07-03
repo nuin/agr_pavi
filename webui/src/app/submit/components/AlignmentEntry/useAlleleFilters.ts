@@ -125,8 +125,8 @@ export interface UseAlleleFiltersResult {
     options: AlleleFilterOptions
     activeCount: number
     filteredAlleles: AlleleInfo[]
-    setSetFilter: (field: 'consequences' | 'impacts' | 'transcriptIds' | 'sift' | 'polyphen', values: Iterable<string>) => void
-    setBoolFilter: (field: 'hasDisease' | 'hasPhenotype', value: boolean | null) => void
+    setSetFilter: (_field: 'consequences' | 'impacts' | 'transcriptIds' | 'sift' | 'polyphen', _values: Iterable<string>) => void
+    setBoolFilter: (_field: 'hasDisease' | 'hasPhenotype', _value: boolean | null) => void
     clearFilters: () => void
 }
 
