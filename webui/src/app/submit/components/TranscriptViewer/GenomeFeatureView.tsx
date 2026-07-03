@@ -49,6 +49,7 @@ export default function GenomeFeatureView({
                 );
 
                 const { GenomeFeatureViewer, fetchNCListData } = await import('genomefeatures');
+                if (disposed) return;
                 const trackData = await fetchNCListData({ region, urlTemplate });
                 if (disposed) return;
 
