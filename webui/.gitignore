@@ -13,6 +13,7 @@
 /cypress/visual-tests/cypress-image-diff-screenshots/*
 !/cypress/visual-tests/cypress-image-diff-screenshots/baseline/
 /cypress/test-resources/
+/cypress/results/
 
 # next.js
 /.next/

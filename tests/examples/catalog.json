@@ -43,8 +43,8 @@
       "genes": [
         { "geneId": "HGNC:8620", "geneName": "PAX6", "species": "Homo sapiens", "uniprotAccession": "P26367" },
         { "geneId": "MGI:97490", "geneName": "Pax6", "species": "Mus musculus", "uniprotAccession": "P63015" },
-        { "geneId": "FB:FBgn0004170", "geneName": "ey", "species": "Drosophila melanogaster", "uniprotAccession": "O18381" },
-        { "geneId": "WB:WBGene00003927", "geneName": "pax-6", "species": "Caenorhabditis elegans" }
+        { "geneId": "FB:FBgn0005558", "geneName": "ey", "species": "Drosophila melanogaster", "uniprotAccession": "O18381" },
+        { "geneId": "WB:WBGene00006870", "geneName": "vab-3", "species": "Caenorhabditis elegans", "uniprotAccession": "G5EDS1" }
       ],
       "expectations": {
         "minSequenceCount": 4,
@@ -61,7 +61,7 @@
       "genes": [
         { "geneId": "HGNC:132", "geneName": "ACTB", "species": "Homo sapiens", "uniprotAccession": "P60709" },
         { "geneId": "MGI:87904", "geneName": "Actb", "species": "Mus musculus", "uniprotAccession": "P60710" },
-        { "geneId": "ZFIN:ZDB-GENE-000329-3", "geneName": "actb1", "species": "Danio rerio" }
+        { "geneId": "ZFIN:ZDB-GENE-000329-3", "geneName": "actb2", "species": "Danio rerio", "uniprotAccession": "Q7ZVF9" }
       ],
       "expectations": {
         "minSequenceCount": 3,
@@ -76,12 +76,12 @@
       "category": "cross-species",
       "description": "HSP70 chaperone - highly conserved stress response protein",
       "genes": [
-        { "geneId": "WB:WBGene00002007", "geneName": "hsp-1", "species": "Caenorhabditis elegans", "uniprotAccession": "P09446" },
-        { "geneId": "FB:FBgn0013278", "geneName": "Hsc70-4", "species": "Drosophila melanogaster", "uniprotAccession": "P11147" }
+        { "geneId": "WB:WBGene00002005", "geneName": "hsp-1", "species": "Caenorhabditis elegans", "uniprotAccession": "P09446" },
+        { "geneId": "FB:FBgn0266599", "geneName": "Hsc70-4", "species": "Drosophila melanogaster", "uniprotAccession": "P11147" }
       ],
       "expectations": {
         "minSequenceCount": 2,
-        "minMaxPairwiseIdentityPct": 55,
+        "minMaxPairwiseIdentityPct": 75,
         "minEmbeddedVariantsTotal": 0,
         "expectedConsequenceCategories": []
       }

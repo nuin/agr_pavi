@@ -24,6 +24,17 @@ const API_BASE = Cypress.env('API_BASE_URL') || 'http://localhost:8000'
 const JOB_TIMEOUT_MS = Number(Cypress.env('JOB_TIMEOUT_MS') || 600_000)
 const ONLY_EXAMPLE = (Cypress.env('ONLY_EXAMPLE') as string | undefined) || ''
 
+// After each example aligns, optionally run the pavi-cli external check:
+// compare the produced proteins against UniProt canonical sequences. This
+// is the only check in the sweep that validates against an outside source
+// rather than the pipeline's own output. Disable with SKIP_SEQUENCE_CHECK=1
+// (e.g. environments without the Python venv or outbound network).
+const RUN_SEQUENCE_CHECK = Cypress.env('SKIP_SEQUENCE_CHECK') !== '1'
+// Paths are relative to the Cypress project root (webui/), which is also
+// cy.exec's working directory.
+const PAVI_CLI = '../tests/cli/.venv/bin/pavi-cli'
+const ALN_DIR = 'cypress/results/alignments'
+
 function parseClustal(text: string): Array<[string, string]> {
     const sequences = new Map<string, string[]>()
     const order: string[] = []
@@ -155,6 +166,12 @@ describe('catalog examples end-to-end', () => {
                             `maxPairwiseIdentity >= ${example.expectations.minMaxPairwiseIdentityPct}%`
                         ).to.be.at.least(example.expectations.minMaxPairwiseIdentityPct)
                     }
+
+                    // Persist the alignment so the post-step UniProt check
+                    // (and any debugging) has the exact bytes we asserted on.
+                    if (RUN_SEQUENCE_CHECK) {
+                        cy.writeFile(`${ALN_DIR}/${example.id}.aln`, res.body as string)
+                    }
                 })
 
                 // --- Seq-info: embedded variants + consequence categories ----------
@@ -187,6 +204,24 @@ describe('catalog examples end-to-end', () => {
                     }
                 })
             })
+
+            // --- External truth check: produced proteins vs UniProt ----------
+            // Runs the pavi-cli verify-sequences command against the alignment
+            // we just saved. A non-zero exit means a gene's protein diverged
+            // from its UniProt canonical beyond the identity threshold.
+            if (RUN_SEQUENCE_CHECK) {
+                cy.exec(
+                    `${PAVI_CLI} verify-sequences --example ${example.id} --alignment-file ${ALN_DIR}/${example.id}.aln`,
+                    { failOnNonZeroExit: false, timeout: 120_000 }
+                ).then((result) => {
+                    const report = `${result.stdout}\n${result.stderr}`.trim()
+                    cy.log(report || 'verify-sequences produced no output')
+                    expect(
+                        result.exitCode,
+                        `verify-sequences for ${example.id}:\n${report}`
+                    ).to.eq(0)
+                })
+            }
 
             // Visual sanity — Nightingale rendered something
             cy.get('nightingale-msa', { timeout: 30_000 }).should('be.visible')
