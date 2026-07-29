@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react';
-import GenomeFeatureView from '../GenomeFeatureView';
+import GenomeFeatureView, { stripDeadFullViewLinks } from '../GenomeFeatureView';
 
 // Mock the cross-repo Alliance utils (same pattern as AlignmentEntry.test).
 jest.mock(
@@ -77,5 +77,51 @@ describe('GenomeFeatureView', () => {
         const onError = jest.fn();
         render(<GenomeFeatureView gene={gene} release="8.2.0" onError={onError} />);
         await waitFor(() => expect(onError).toHaveBeenCalledWith('boom'));
+    });
+});
+
+describe('stripDeadFullViewLinks', () => {
+    it('removes the dead JBrowse overflow notices but keeps transcript nodes', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <svg>
+                <g class="track">
+                    <a class="transcriptLabel"><text>ENST0001</text></a>
+                    <rect width="10" height="4"></rect>
+                    <a class="transcriptLabel"><text><a href="https://alliancegenome.org/jbrowse/?data=x&loc=17:1..2">Maximum features displayed.  See full view for more.</a></text></a>
+                </g>
+            </svg>`;
+        const svg = container.querySelector('svg') as SVGSVGElement;
+
+        const removed = stripDeadFullViewLinks(svg);
+
+        expect(removed).toBe(1);
+        expect(svg.querySelector('a[href*="/jbrowse/"]')).toBeNull();
+        expect(svg.textContent).not.toContain('Maximum features displayed');
+        // Transcript model + label preserved.
+        expect(svg.querySelector('rect')).not.toBeNull();
+        expect(svg.textContent).toContain('ENST0001');
+    });
+
+    it('removes a bare dead anchor when it has no enclosing text element', () => {
+        const container = document.createElement('div');
+        container.innerHTML =
+            `<svg><a href="https://alliancegenome.org/jbrowse/?loc=1:1..2">x</a><rect></rect></svg>`;
+        const svg = container.querySelector('svg') as SVGSVGElement;
+
+        expect(stripDeadFullViewLinks(svg)).toBe(1);
+        expect(svg.querySelector('a')).toBeNull();
+        expect(svg.querySelector('rect')).not.toBeNull();
+    });
+
+    it('is a no-op when there are no dead links', () => {
+        const container = document.createElement('div');
+        container.innerHTML =
+            `<svg><g class="track"><rect></rect><text>ENST0001</text></g></svg>`;
+        const svg = container.querySelector('svg') as SVGSVGElement;
+
+        expect(stripDeadFullViewLinks(svg)).toBe(0);
+        expect(svg.querySelector('rect')).not.toBeNull();
+        expect(svg.textContent).toContain('ENST0001');
     });
 });

@@ -14,6 +14,28 @@ export interface GenomeFeatureViewProps {
     readonly onError?: (message: string) => void;
 }
 
+/**
+ * Remove the genomefeatures library's dead "full view" overflow notices.
+ *
+ * When a gene's locus has more features than the viewer's display cap, the
+ * library appends a "Maximum features displayed. See full view for more."
+ * link pointing at Alliance's decommissioned JBrowse 1
+ * (https://alliancegenome.org/jbrowse/, which now 403s). We strip those dead
+ * notices after render; the transcript models themselves are untouched. The
+ * notice text lives inside an enclosing <text> element, so we remove that
+ * where present (falling back to the anchor itself).
+ *
+ * Returns the number of dead links removed (useful for tests/assertions).
+ */
+export function stripDeadFullViewLinks(svgEl: Element): number {
+    const deadLinks = svgEl.querySelectorAll('a[href*="/jbrowse/"]');
+    deadLinks.forEach((anchor) => {
+        const notice = anchor.closest('text');
+        (notice ?? anchor).remove();
+    });
+    return deadLinks.length;
+}
+
 export default function GenomeFeatureView({
     gene,
     release,
@@ -27,6 +49,7 @@ export default function GenomeFeatureView({
 
     useEffect(() => {
         let disposed = false;
+        let overflowObserver: MutationObserver | undefined;
 
         const clearSvg = () => {
             const el = document.getElementById(svgId);
@@ -64,6 +87,18 @@ export default function GenomeFeatureView({
 
                 clearSvg();
                 new GenomeFeatureViewer(config, `#${svgId}`, width, height);
+
+                // Strip the library's dead JBrowse-1 "full view" links. The
+                // viewer may finish drawing asynchronously, so prune once now
+                // and keep pruning as nodes arrive until cleanup.
+                const svgEl = document.getElementById(svgId);
+                if (svgEl) {
+                    stripDeadFullViewLinks(svgEl);
+                    overflowObserver = new MutationObserver(() =>
+                        stripDeadFullViewLinks(svgEl)
+                    );
+                    overflowObserver.observe(svgEl, { childList: true, subtree: true });
+                }
             } catch (e) {
                 if (!disposed) {
                     onError?.(e instanceof Error ? e.message : String(e));
@@ -74,6 +109,7 @@ export default function GenomeFeatureView({
         renderViewer();
         return () => {
             disposed = true;
+            overflowObserver?.disconnect();
             clearSvg();
         };
     }, [gene, release, svgId, width, height, onError]);
