@@ -30,15 +30,7 @@ export default function HomePage() {
                 <h2 className={styles.sectionTitle}>What You Can Do</h2>
                 <div className={styles.featureGrid}>
                     <div className={styles.featureCard}>
-                        <div className={styles.featureIcon}>
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                        </div>
+                        <div className={`${styles.featureIcon} ${styles.iconSequenceAlignment}`} role="img" aria-label="Sequence alignment" />
                         <h3>Sequence Alignment</h3>
                         <p>
                             Perform multiple sequence alignments using MAFFT or Clustal Omega
@@ -47,14 +39,7 @@ export default function HomePage() {
                     </div>
 
                     <div className={styles.featureCard}>
-                        <div className={styles.featureIcon}>
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                                <line x1="9" y1="9" x2="9.01" y2="9"/>
-                                <line x1="15" y1="9" x2="15.01" y2="9"/>
-                            </svg>
-                        </div>
+                        <div className={`${styles.featureIcon} ${styles.iconCrossSpecies}`} role="img" aria-label="Cross-species comparison" />
                         <h3>Cross-Species Comparison</h3>
                         <p>
                             Compare protein sequences across 8+ model organisms from
@@ -63,13 +48,7 @@ export default function HomePage() {
                     </div>
 
                     <div className={styles.featureCard}>
-                        <div className={styles.featureIcon}>
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                                <path d="M2 17l10 5 10-5"/>
-                                <path d="M2 12l10 5 10-5"/>
-                            </svg>
-                        </div>
+                        <div className={`${styles.featureIcon} ${styles.iconVariantAnnotation}`} role="img" aria-label="Variant annotation" />
                         <h3>Variant Annotation</h3>
                         <p>
                             Annotate and visualize protein variants with evolutionary
@@ -78,13 +57,7 @@ export default function HomePage() {
                     </div>
 
                     <div className={styles.featureCard}>
-                        <div className={styles.featureIcon}>
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="3" y1="9" x2="21" y2="9"/>
-                                <line x1="9" y1="21" x2="9" y2="9"/>
-                            </svg>
-                        </div>
+                        <div className={`${styles.featureIcon} ${styles.iconInteractiveVisualization}`} role="img" aria-label="Interactive visualization" />
                         <h3>Interactive Visualization</h3>
                         <p>
                             Explore alignments with interactive viewers featuring

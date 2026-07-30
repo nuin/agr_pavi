@@ -122,15 +122,42 @@
 }
 
 .featureIcon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 64px;
     height: 64px;
     margin: 0 auto var(--agr-spacing-md);
-    background-color: var(--agr-primary-100);
-    color: var(--agr-primary-600);
-    border-radius: 50%;
+    /* Each icon is a self-contained 64x64 SVG (its own tinted circle +
+       colored glyph), so the wrapper only positions it — no background or
+       tint of its own. Light asset by default; the dark variant swaps in
+       under [data-theme="dark"] below. */
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.iconSequenceAlignment {
+    background-image: url('/icons/features/sequence-alignment.svg');
+}
+.iconCrossSpecies {
+    background-image: url('/icons/features/cross-species-comparison.svg');
+}
+.iconVariantAnnotation {
+    background-image: url('/icons/features/variant-annotation.svg');
+}
+.iconInteractiveVisualization {
+    background-image: url('/icons/features/interactive-visualization.svg');
+}
+
+:global([data-theme='dark']) .iconSequenceAlignment {
+    background-image: url('/icons/features/sequence-alignment-dark.svg');
+}
+:global([data-theme='dark']) .iconCrossSpecies {
+    background-image: url('/icons/features/cross-species-comparison-dark.svg');
+}
+:global([data-theme='dark']) .iconVariantAnnotation {
+    background-image: url('/icons/features/variant-annotation-dark.svg');
+}
+:global([data-theme='dark']) .iconInteractiveVisualization {
+    background-image: url('/icons/features/interactive-visualization-dark.svg');
 }
 
 .featureCard h3 {
