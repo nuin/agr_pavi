@@ -70,6 +70,9 @@ export const Header: React.FC = () => {
                     <Link href="/submit-ortholog" onClick={() => setMobileMenuOpen(false)}>
                         Ortholog Alignment
                     </Link>
+                    <Link href="/submit-bulk" onClick={() => setMobileMenuOpen(false)}>
+                        Bulk Upload
+                    </Link>
                     <Link href="/jobs" onClick={() => setMobileMenuOpen(false)}>
                         My Jobs
                     </Link>
