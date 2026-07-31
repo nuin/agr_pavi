@@ -23,6 +23,7 @@ export interface AlignmentEntryProps {
     readonly dispatchInputPayloadPart: React.Dispatch<InputPayloadDispatchAction>;
     readonly initialGeneId?: string;
     readonly initialAlleleIds?: string[];
+    readonly initialTranscriptNames?: string[];
 }
 
 // Helper to safely access variants regardless of Map vs plain object (server action serialization)
@@ -134,6 +135,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
             onStatusChange: handleStatusChange,
             setupCompleted,
             initialGeneId: props.initialGeneId,
+            initialTranscriptNames: props.initialTranscriptNames,
         },
         transcriptMultiselectRef
     );

@@ -16,6 +16,20 @@ export interface UseTranscriptSelectionOptions {
     onStatusChange?: (_status: AlignmentEntryStatus, _payloadPart?: undefined) => void;
     setupCompleted?: boolean;
     initialGeneId?: string;
+    initialTranscriptNames?: string[];
+}
+
+// Map transcript names (as they appear in the file / MultiSelect label,
+// e.g. "ENST00000269305.9") to the transcript feature ids the selection
+// state uses. Preserves transcriptList order; names not present are dropped.
+export function selectInitialTranscriptIds(
+    transcriptList: Feature[],
+    names: string[]
+): string[] {
+    const wanted = new Set(names);
+    return transcriptList
+        .filter((t) => wanted.has(t.get('name') as string))
+        .map((t) => t.id());
 }
 
 export interface UseTranscriptSelectionResult {
@@ -63,7 +77,7 @@ export function useTranscriptSelection(
     options: UseTranscriptSelectionOptions,
     transcriptMultiselectRef: RefObject<MultiSelect | null>
 ): UseTranscriptSelectionResult {
-    const { gene, agrjBrowseDataRelease, onStatusChange, setupCompleted, initialGeneId } = options;
+    const { gene, agrjBrowseDataRelease, onStatusChange, setupCompleted, initialGeneId, initialTranscriptNames } = options;
 
     // Transcript state
     const [transcriptList, setTranscriptList] = useState<Feature[]>([]);
@@ -245,23 +259,27 @@ export function useTranscriptSelection(
         }
     }, [setupCompleted, selectedTranscriptIds, transcriptListFocused, transcriptListOpened, processTranscriptEntry]);
 
-    // Auto-select first transcript when loaded via initialGeneId
+    // Select initial transcripts once the list has loaded: explicit names
+    // from the caller take priority; otherwise fall back to the canonical
+    // (or first) transcript, preserving the prior initialGeneId behavior.
     useEffect(() => {
-        if (initialGeneId && !transcriptListLoading && transcriptList.length > 0 && selectedTranscriptIds.length === 0) {
-            console.log(`Auto-selecting first transcript for initialGeneId: ${initialGeneId}`);
-            // Find canonical transcript or use first one
+        if ((initialGeneId || initialTranscriptNames?.length) && !transcriptListLoading && transcriptList.length > 0 && selectedTranscriptIds.length === 0) {
+            if (initialTranscriptNames && initialTranscriptNames.length > 0) {
+                const matched = selectInitialTranscriptIds(transcriptList, initialTranscriptNames);
+                if (matched.length > 0) {
+                    setSelectedTranscriptIds(matched);
+                    return;
+                }
+            }
             const canonicalTranscript =
                 transcriptList.find(
                     (t) => t.get('name')?.includes('canonical') || t.get('is_canonical') === true
                 ) || transcriptList[0];
             if (canonicalTranscript) {
-                const transcriptId = canonicalTranscript.id();
-                console.log(`Auto-selected transcript: ${transcriptId}`);
-                // Just set the IDs - the existing useEffect will handle calling processTranscriptEntry
-                setSelectedTranscriptIds([transcriptId]);
+                setSelectedTranscriptIds([canonicalTranscript.id()]);
             }
         }
-    }, [initialGeneId, transcriptListLoading, transcriptList, selectedTranscriptIds.length]);
+    }, [initialGeneId, initialTranscriptNames, transcriptListLoading, transcriptList, selectedTranscriptIds.length]);
 
     return {
         // State

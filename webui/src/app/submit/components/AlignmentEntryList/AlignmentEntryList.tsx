@@ -32,7 +32,8 @@ export const AlignmentEntryList: FunctionComponent<AlignmentEntryListProps> = (p
                 ...alignmentEntryBaseProps,
                 index: index,
                 initialGeneId: initialGene?.geneId,
-                initialAlleleIds: initialGene?.alleleIds
+                initialAlleleIds: initialGene?.alleleIds,
+                initialTranscriptNames: initialGene?.transcriptNames
             }}
         ) as AlignmentEntryListItem
     }
