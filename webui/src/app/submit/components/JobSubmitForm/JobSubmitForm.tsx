@@ -18,6 +18,10 @@ import { JobType, JobSumbissionPayloadRecord, InputPayloadDispatchAction, InputP
 interface JobSumbitProps {
     readonly agrjBrowseDataRelease: string
     readonly initialGenes?: ExampleGene[]
+    // When embedded in another flow (e.g. the bulk-upload page), hide the
+    // standalone onboarding intro and the "Load Example" affordance — the
+    // caller has already supplied the genes.
+    readonly embedded?: boolean
 }
 export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbitProps) => {
     const router = useRouter()
@@ -250,14 +254,14 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
 
     return (
         <div className="agr-page-section">
-            <FormIntroduction />
+            {!props.embedded && <FormIntroduction />}
 
             <ValidationSummary errors={validationErrors} />
 
             <div className="agr-card">
                 <div className="agr-card-header">
                     <h2>Alignment Entries</h2>
-                    <ExampleDataLoader onLoadExample={handleLoadExample} />
+                    {!props.embedded && <ExampleDataLoader onLoadExample={handleLoadExample} />}
                 </div>
                 <div className="agr-card-body">
                     <AlignmentEntryList agrjBrowseDataRelease={props.agrjBrowseDataRelease}
