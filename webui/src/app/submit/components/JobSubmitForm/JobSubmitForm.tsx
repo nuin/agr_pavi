@@ -17,6 +17,7 @@ import { JobType, JobSumbissionPayloadRecord, InputPayloadDispatchAction, InputP
 
 interface JobSumbitProps {
     readonly agrjBrowseDataRelease: string
+    readonly initialGenes?: ExampleGene[]
 }
 export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbitProps) => {
     const router = useRouter()
@@ -126,7 +127,7 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     const [job, setJob] = useState(initJob)
     const [displayMsg, setDisplayMsg] = useState('')
     const [validationErrors, setValidationErrors] = useState<string[]>([])
-    const [initialGenes, setInitialGenes] = useState<ExampleGene[]>()
+    const [initialGenes, setInitialGenes] = useState<ExampleGene[] | undefined>(props.initialGenes)
     // Bump this counter on example load to force remount of AlignmentEntry components,
     // ensuring their useEffect mount handler re-runs (clears stale internal state and
     // re-dispatches ADD to inputPayloadParts).
@@ -190,6 +191,15 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
             })
         }
     }
+
+    // When entries are provided by a parent (e.g. the bulk-upload page),
+    // load them once on mount just as selecting an example would.
+    useEffect(() => {
+        if (props.initialGenes && props.initialGenes.length > 0) {
+            setLoadVersion(v => v + 1)
+        }
+        // Mount-only: the parent passes a fresh entry set per navigation.
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         console.log('New inputPayloadParts: ', inputPayloadParts)
