@@ -19,6 +19,7 @@ export interface ExampleGene {
     geneName: string;
     species: string;
     alleleIds?: string[];
+    transcriptNames?: string[];
 }
 
 // Pre-defined example datasets are sourced from `tests/examples/catalog.json`,
