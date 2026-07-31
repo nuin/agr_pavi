@@ -16,7 +16,7 @@ export async function resolveGeneBySymbolSpecies(
 ): Promise<GeneMatch[]> {
     const url = `https://www.alliancegenome.org/api/search?category=gene_search_result&q=${encodeURIComponent(
         symbol
-    )}&limit=20`;
+    )}&species=${encodeURIComponent(species)}&limit=20`;
     const response = await fetch(url, { headers: { accept: 'application/json' } });
     if (!response.ok) {
         throw new Error(`Gene search failed with HTTP ${response.status}`);

@@ -36,10 +36,15 @@ export function BulkUploadForm({ agrjBrowseDataRelease }: BulkUploadFormProps) {
             return;
         }
 
-        const result = await resolveRows(rows);
-        setEntries(result.entries);
-        setSkipped(result.skipped);
-        setStatus('ready');
+        try {
+            const result = await resolveRows(rows);
+            setEntries(result.entries);
+            setSkipped(result.skipped);
+            setStatus('ready');
+        } catch {
+            setFileError('Something went wrong while resolving genes. Please try again.');
+            setStatus('error');
+        }
     }
 
     function downloadTemplate() {

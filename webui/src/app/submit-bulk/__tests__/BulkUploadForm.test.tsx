@@ -54,4 +54,20 @@ describe('BulkUploadForm', () => {
         await waitFor(() => expect(screen.getByText(/file appears to be empty/i)).toBeInTheDocument());
         expect(screen.queryByTestId('job-submit-form')).toBeNull();
     });
+
+    it('shows a friendly error and no form when resolving genes throws', async () => {
+        const { resolveRows } = jest.requireMock('../resolveRows');
+        resolveRows.mockRejectedValueOnce(new Error('network exploded'));
+
+        render(<BulkUploadForm agrjBrowseDataRelease="8.2.0" />);
+        const file = new File(['species,gene_symbol\nHomo sapiens,TP53\n'], 'genes.csv', { type: 'text/plain' });
+        fireEvent.change(screen.getByLabelText(/gene list file/i), { target: { files: [file] } });
+
+        await waitFor(() =>
+            expect(
+                screen.getByText(/something went wrong while resolving genes/i)
+            ).toBeInTheDocument()
+        );
+        expect(screen.queryByTestId('job-submit-form')).toBeNull();
+    });
 });
