@@ -181,6 +181,25 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
         }
     }, [transcriptFilterCount, filteredAlleleCount, totalAlleleCount, setAlleleFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Options for the allele MultiSelect. Start from the (transcript-)filtered
+    // list, then add back any currently-selected allele the filter excluded:
+    // a MultiSelect can't render a chip label for a selected value missing
+    // from its options, so a pre-selected allele that doesn't match the
+    // auto-picked transcript would otherwise show as "null".
+    const alleleOptions = useMemo(() => {
+        const shown = alleleFilters.filteredAlleles;
+        const shownIds = new Set(shown.map((r) => r.id));
+        const selectedButHidden = alleleSelection.alleleList.filter(
+            (r) => alleleSelection.selectedAlleleIds.includes(r.id) && !shownIds.has(r.id)
+        );
+        return [...shown, ...selectedButHidden].map((r) => ({
+            key: r.id,
+            chipLabel: r.displayName,
+            filterValue: alleleOptionFilterValue(r),
+            allele: r,
+        }));
+    }, [alleleFilters.filteredAlleles, alleleSelection.alleleList, alleleSelection.selectedAlleleIds]);
+
     // Register callback to reset dependent selections when gene changes
     useEffect(() => {
         geneSearch.onGeneChange(() => {
@@ -468,12 +487,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                             alleleSelection.setAlleleListOpened(true);
                             alleleSelection.loadAllelesOnDemand();
                         }}
-                        options={alleleFilters.filteredAlleles.map((r) => ({
-                            key: r['id'],
-                            chipLabel: r['displayName'],
-                            filterValue: alleleOptionFilterValue(r),
-                            allele: r,
-                        }))}
+                        options={alleleOptions}
                     />
                     <label htmlFor={`alleles-${props.index}`}>
                         Alleles
