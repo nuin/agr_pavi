@@ -4,6 +4,7 @@ import React, { useEffect, useId } from 'react';
 import { getSpecies, getSingleGenomeLocation } from 'https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib/utils.js';
 import { GeneInfo } from '../AlignmentEntry/types';
 import { buildNcListUrl, buildIsoformTrackConfig, ViewerRegion } from './trackConfig';
+import './transcriptView.css';
 
 export interface GenomeFeatureViewProps {
     readonly gene: GeneInfo;
@@ -114,5 +115,5 @@ export default function GenomeFeatureView({
         };
     }, [gene, release, svgId, width, height, onError]);
 
-    return <svg id={svgId} width={width} height={height} />;
+    return <svg id={svgId} className="pavi-transcript-view" width={width} height={height} />;
 }
