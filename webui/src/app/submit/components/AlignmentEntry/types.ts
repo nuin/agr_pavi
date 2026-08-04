@@ -55,12 +55,15 @@ export interface VariantInfo {
     consequences: VariantConsequence[],
 }
 
+export type AlleleSource = 'gene' | 'lookup' | 'search'
+
 export interface AlleleInfo {
     readonly id: string,
     readonly displayName: string,
     variants: Map<string, VariantInfo>,
     hasDisease: boolean,
     hasPhenotype: boolean,
+    readonly source?: AlleleSource,
 }
 
 export type FeatureStrand = 1 | -1

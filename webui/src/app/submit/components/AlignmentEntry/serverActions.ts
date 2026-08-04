@@ -343,6 +343,7 @@ export async function fetchAlleles (geneId: string, requiredAlleleIds: string[] 
                     variants: new Map(),
                     hasDisease: Boolean(result['allele']?.['hasDisease'] ?? result['hasDisease']),
                     hasPhenotype: Boolean(result['allele']?.['hasPhenotype'] ?? result['hasPhenotype']),
+                    source: 'gene',
                 }
                 allelesMap.set(alleleId, allele)
             }
