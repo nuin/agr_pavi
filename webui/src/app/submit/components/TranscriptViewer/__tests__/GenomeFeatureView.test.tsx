@@ -1,6 +1,9 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react';
-import GenomeFeatureView, { stripDeadFullViewLinks } from '../GenomeFeatureView';
+import GenomeFeatureView, {
+    stripDeadFullViewLinks,
+    addTranscriptTopSpacing,
+} from '../GenomeFeatureView';
 
 // Mock the cross-repo Alliance utils (same pattern as AlignmentEntry.test).
 jest.mock(
@@ -123,5 +126,47 @@ describe('stripDeadFullViewLinks', () => {
         expect(stripDeadFullViewLinks(svg)).toBe(0);
         expect(svg.querySelector('rect')).not.toBeNull();
         expect(svg.textContent).toContain('ENST0001');
+    });
+});
+
+describe('addTranscriptTopSpacing', () => {
+    const makeSvg = (trackTransform: string) => {
+        const container = document.createElement('div');
+        container.innerHTML =
+            `<svg>` +
+            `<g class="axis track" transform="translate(0,20)"></g>` +
+            `<g class="track" transform="${trackTransform}"></g>` +
+            `</svg>`;
+        const svg = container.querySelector('svg') as SVGSVGElement;
+        const isoTrack = Array.from(svg.querySelectorAll('g.track')).find(
+            (g) => !g.classList.contains('axis')
+        ) as SVGGElement;
+        return { svg, isoTrack };
+    };
+
+    it('adds the gap to the isoform track y-offset without touching the axis', () => {
+        const { svg, isoTrack } = makeSvg('translate(0,38.5)');
+        addTranscriptTopSpacing(svg, 16);
+        expect(isoTrack.getAttribute('transform')).toBe('translate(0,54.5)');
+        // The axis track is left where it was.
+        expect(svg.querySelector('g.axis')?.getAttribute('transform')).toBe(
+            'translate(0,20)'
+        );
+    });
+
+    it('is idempotent — repeated calls do not stack the offset', () => {
+        const { svg, isoTrack } = makeSvg('translate(0,38.5)');
+        addTranscriptTopSpacing(svg, 16);
+        addTranscriptTopSpacing(svg, 16);
+        addTranscriptTopSpacing(svg, 16);
+        expect(isoTrack.getAttribute('transform')).toBe('translate(0,54.5)');
+        expect(isoTrack.getAttribute('data-pavi-spaced')).toBe('1');
+    });
+
+    it('does nothing when the isoform track has no translate transform', () => {
+        const { svg, isoTrack } = makeSvg('');
+        addTranscriptTopSpacing(svg, 16);
+        expect(isoTrack.getAttribute('transform')).toBe('');
+        expect(isoTrack.getAttribute('data-pavi-spaced')).toBeNull();
     });
 });

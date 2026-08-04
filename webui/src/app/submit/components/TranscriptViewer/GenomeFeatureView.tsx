@@ -37,6 +37,33 @@ export function stripDeadFullViewLinks(svgEl: Element): number {
     return deadLinks.length;
 }
 
+// Extra vertical gap (px) inserted between the coordinate axis and the
+// first transcript row — the library packs the first isoform tight against
+// the axis.
+const TRANSCRIPT_TOP_GAP = 16;
+
+/**
+ * Push the isoform track down a little so the first transcript isn't jammed
+ * against the coordinate axis. The library renders every isoform inside a
+ * single `g.track` (non-axis) group with a `translate(0,Y)`; we add to that Y
+ * rather than hardcoding it, and mark the group so repeated observer passes
+ * don't stack the offset. The SVG has vertical slack, so nothing clips.
+ */
+export function addTranscriptTopSpacing(svgEl: Element, gap = TRANSCRIPT_TOP_GAP): void {
+    const track = Array.from(svgEl.querySelectorAll('g.track')).find(
+        (g) => !g.classList.contains('axis')
+    );
+    if (!track || track.getAttribute('data-pavi-spaced')) return;
+    const match = (track.getAttribute('transform') ?? '').match(
+        /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/
+    );
+    if (!match) return;
+    const x = match[1];
+    const y = parseFloat(match[2]) + gap;
+    track.setAttribute('transform', `translate(${x},${y})`);
+    track.setAttribute('data-pavi-spaced', '1');
+}
+
 export default function GenomeFeatureView({
     gene,
     release,
@@ -103,9 +130,11 @@ export default function GenomeFeatureView({
                 const svgEl = document.getElementById(svgId);
                 if (svgEl) {
                     stripDeadFullViewLinks(svgEl);
-                    overflowObserver = new MutationObserver(() =>
-                        stripDeadFullViewLinks(svgEl)
-                    );
+                    addTranscriptTopSpacing(svgEl);
+                    overflowObserver = new MutationObserver(() => {
+                        stripDeadFullViewLinks(svgEl);
+                        addTranscriptTopSpacing(svgEl);
+                    });
                     overflowObserver.observe(svgEl, { childList: true, subtree: true });
                 }
             } catch (e) {
