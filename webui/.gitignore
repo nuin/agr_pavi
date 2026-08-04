@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Vendored patched genomefeatures build (raised isoform cap) — keep its dist.
+!/third_party/genomefeatures/dist/
+!/third_party/genomefeatures/dist/**
+/third_party/genomefeatures/node_modules/

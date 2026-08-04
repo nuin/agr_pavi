@@ -87,7 +87,15 @@ export default function GenomeFeatureView({
                 });
 
                 clearSvg();
-                new GenomeFeatureViewer(config, `#${svgId}`, width, height);
+                // `config.tracks[].trackData` is the NCList payload from
+                // fetchNCListData, typed as unknown on our side; cast to the
+                // library's ViewerConfig at this boundary.
+                new GenomeFeatureViewer(
+                    config as unknown as ConstructorParameters<typeof GenomeFeatureViewer>[0],
+                    `#${svgId}`,
+                    width,
+                    height
+                );
 
                 // Strip the library's dead JBrowse-1 "full view" links. The
                 // viewer may finish drawing asynchronously, so prune once now

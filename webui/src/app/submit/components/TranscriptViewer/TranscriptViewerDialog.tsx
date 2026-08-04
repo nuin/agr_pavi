@@ -55,7 +55,12 @@ export function TranscriptViewerDialog({
                         .
                     </div>
                 ) : (
-                    <GenomeFeatureView gene={gene} release={release} onError={setError} />
+                    // Genes with many isoforms produce a tall SVG; scroll it
+                    // within the dialog rather than letting the dialog grow
+                    // past the viewport.
+                    <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
+                        <GenomeFeatureView gene={gene} release={release} onError={setError} />
+                    </div>
                 )
             ) : null}
         </Dialog>
