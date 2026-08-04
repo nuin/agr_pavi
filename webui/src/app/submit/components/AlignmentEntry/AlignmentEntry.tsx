@@ -5,7 +5,7 @@ import { AutoComplete, AutoCompleteState, AutoCompletePassThroughMethodOptions }
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { MultiSelect } from 'primereact/multiselect';
-import React, { createRef, FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createRef, FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useGeneSearch, useTranscriptSelection, useAlleleSelection } from '@/hooks';
 import { AlignmentEntryStatus, AlleleInfo } from './types';
@@ -13,6 +13,8 @@ import { useAlleleFilters } from './useAlleleFilters';
 import { AlleleFilterPanel } from './AlleleFilterPanel';
 import { JobSumbissionPayloadRecord, InputPayloadPart, InputPayloadDispatchAction } from '../JobSubmitForm/types';
 import { TranscriptViewerDialog } from '../TranscriptViewer';
+import { lookupVariantByHgvs, searchVariants } from './serverActions';
+import { looksLikeHgvs, normalizeHgvs } from './hgvs';
 
 // Note: dynamic import of stage vs main src is currently not possible on client nor server (2024/07/25).
 import { getSingleGenomeLocation } from 'https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib/utils.js';
@@ -86,6 +88,9 @@ const normalizeChromosomeId = (chromosome: string, _taxonId: string): string => 
 export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: AlignmentEntryProps) => {
     const [setupCompleted, setSetupCompleted] = useState<boolean>(false);
     const [transcriptViewerVisible, setTranscriptViewerVisible] = useState(false);
+    const [variantSearchStatus, setVariantSearchStatus] = useState<string | null>(null);
+    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const searchReqIdRef = useRef(0);
 
     // Refs for form elements
     const geneMessageRef: React.RefObject<Message | null> = createRef();
@@ -151,6 +156,41 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
 
     const alleleFilters = useAlleleFilters(alleleSelection.alleleList);
     const { setSetFilter: setAlleleFilter, filters: activeAlleleFilters, filteredAlleles } = alleleFilters;
+
+    // Debounced search-as-you-type / paste-to-lookup for the Alleles filter
+    // box: a genomic HGVS string is resolved directly; anything else (3+
+    // chars) runs a best-effort text search. Found alleles are merged into
+    // alleleList via addAlleles (preserving the in-progress selection).
+    // Latest-wins guard (searchReqIdRef) so a slow earlier response can't
+    // clobber a newer one.
+    const handleAlleleFilter = useCallback((rawValue: string) => {
+        const gene = geneSearch.gene;
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        const value = normalizeHgvs(rawValue ?? '');
+        if (!gene || value.length < 3) { setVariantSearchStatus(null); return; }
+        searchDebounceRef.current = setTimeout(async () => {
+            const reqId = ++searchReqIdRef.current;
+            setVariantSearchStatus('Searching…');
+            try {
+                if (looksLikeHgvs(value)) {
+                    const found = await lookupVariantByHgvs(gene.id, value);
+                    if (reqId !== searchReqIdRef.current) return;
+                    if (found) { alleleSelection.addAlleles([found]); setVariantSearchStatus('Added — select it below'); }
+                    else setVariantSearchStatus('No match for this gene');
+                } else {
+                    const hits = await searchVariants(gene.id, gene.symbol, gene.species?.name ?? '', value);
+                    if (reqId !== searchReqIdRef.current) return;
+                    if (hits.length) { alleleSelection.addAlleles(hits); setVariantSearchStatus(`${hits.length} match(es) added`); }
+                    else setVariantSearchStatus('No matches');
+                }
+            } catch {
+                if (reqId === searchReqIdRef.current) setVariantSearchStatus('Search unavailable');
+            }
+        }, 350);
+    }, [geneSearch.gene, alleleSelection]);
+
+    // Clear any pending debounced search on unmount.
+    useEffect(() => () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); }, []);
 
     // Auto-filter alleles to those affecting the currently selected transcript(s).
     // Use curie (Alliance-API-aligned identifier) rather than JBrowse internal id.
@@ -474,6 +514,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         style={{ width: '100%' }}
                         filter
                         filterBy="filterValue"
+                        onFilter={(e) => handleAlleleFilter(e.filter)}
                         emptyMessage={!geneSearch.gene ? "Select a gene first" : (alleleSelection.alleleListLoading || alleleSelection.alleleList.length === 0 && !alleleSelection.alleleListLoaded) ? "Loading alleles..." : alleleFilters.activeCount > 0 ? "No alleles match filters" : "No alleles with variants found"}
                         value={alleleSelection.selectedAlleleIds}
                         onChange={(e) => alleleSelection.setSelectedAlleleIds(e.value)}
@@ -522,6 +563,11 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                                 {alleleFilters.activeCount > 0
                                     ? `${alleleFilters.filteredAlleles.length} of ${alleleSelection.alleleList.length}`
                                     : `${alleleSelection.alleleList.length} available`}
+                            </span>
+                        )}
+                        {variantSearchStatus && (
+                            <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontStyle: 'italic', color: 'var(--agr-text-muted, #6c757d)' }}>
+                                {variantSearchStatus}
                             </span>
                         )}
                     </label>
