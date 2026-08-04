@@ -1,6 +1,6 @@
 'use server';
 
-import { GeneInfo, AlleleInfo, GeneSuggestion, VariantConsequence } from "./types";
+import { GeneInfo, AlleleInfo, GeneSuggestion, VariantConsequence, VariantInfo } from "./types";
 import { fetchUntilDistinct } from "@/app/helper_fns";
 
 // Adapt the new Alliance gene-summary response shape (everything nested
@@ -366,5 +366,64 @@ export async function fetchAlleles (geneId: string, requiredAlleleIds: string[] 
     } catch (error) {
         console.error(`Error fetching alleles for gene ${geneId}:`, error)
         return [];
+    }
+}
+
+// Parse a predictedVariantConsequences[] entry from the /api/variant shape
+// (differs from allele-variant-detail: no siftPrediction/polyphenPrediction here).
+function parsePredictedConsequence(raw: any): VariantConsequence {
+    const tx = raw?.['variantTranscript']
+    const consequences: string[] = Array.isArray(raw?.['vepConsequences'])
+        ? raw['vepConsequences'].map((c: any) => c?.name).filter(Boolean)
+        : []
+    const proteinPos = raw?.['calculatedProteinStart']
+    return {
+        transcriptId: tx?.['curie'] ?? tx?.['name'],
+        transcriptName: tx?.['name'],
+        molecularConsequences: consequences,
+        impact: raw?.['vepImpact']?.['name'],
+        proteinStartPosition: (proteinPos !== undefined && proteinPos !== null && Number.isFinite(Number(proteinPos)))
+            ? Number(proteinPos) : undefined,
+        sift: undefined,
+        polyphen: undefined,
+    }
+}
+
+export async function lookupVariantByHgvs(geneId: string, hgvs: string): Promise<AlleleInfo | null> {
+    const stripHtml = (s?: string) => (s ?? '').replace(/<[^>]+>/g, '')
+    try {
+        const url = `https://www.alliancegenome.org/api/variant/${encodeURIComponent(hgvs)}`
+        const response = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } })
+        if (!response.ok) return null
+        const body = await response.json()
+
+        const geneIds: string[] = Array.isArray(body?.['geneIds']) ? body['geneIds'] : []
+        if (!geneIds.includes(geneId)) return null
+
+        const loc = body?.['variantList']?.[0]?.['curatedVariantGenomicLocations']?.[0]
+        if (!loc) return null
+        const resolvedHgvs: string = loc['hgvs'] ?? hgvs
+
+        const consequences = Array.isArray(loc['predictedVariantConsequences'])
+            ? loc['predictedVariantConsequences'].map(parsePredictedConsequence)
+            : []
+
+        const alleleId: string = body?.['allele']?.['primaryExternalId'] ?? resolvedHgvs
+        const displayName = stripHtml(body?.['symbol']) || resolvedHgvs
+
+        const variants = new Map<string, VariantInfo>()
+        variants.set(resolvedHgvs, { id: resolvedHgvs, displayName: resolvedHgvs, consequences })
+
+        return {
+            id: alleleId,
+            displayName,
+            variants,
+            hasDisease: Boolean(body?.['hasDisease']),
+            hasPhenotype: Boolean(body?.['hasPhenotype']),
+            source: 'lookup',
+        }
+    } catch (error) {
+        console.error(`Error looking up variant ${hgvs} for gene ${geneId}:`, error)
+        return null
     }
 }
