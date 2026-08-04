@@ -427,3 +427,49 @@ export async function lookupVariantByHgvs(geneId: string, hgvs: string): Promise
         return null
     }
 }
+
+export async function searchVariants(
+    geneId: string, geneSymbol: string, speciesName: string, query: string, limit = 15
+): Promise<AlleleInfo[]> {
+    try {
+        const params = new URLSearchParams({
+            category: 'variant_search_result',
+            q: query,
+            limit: String(Math.max(1, limit) * 3), // over-fetch; we filter by gene then trim
+        })
+        if (speciesName) params.append('species', speciesName)
+        const url = `https://www.alliancegenome.org/api/search?${params.toString()}`
+        const response = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } })
+        if (!response.ok) return []
+        const body = await response.json()
+        const results: any[] = Array.isArray(body?.['results']) ? body['results'] : []
+
+        const symbolLc = geneSymbol.toLowerCase()
+        const speciesLc = speciesName.toLowerCase()
+        const matchesGene = (r: any): boolean =>
+            (!speciesName || r?.['species']?.toLowerCase?.() === speciesLc) &&
+            Array.isArray(r?.['genes']) &&
+            r['genes'].some((g: string) => typeof g === 'string' &&
+                g.toLowerCase().split(' ')[0] === symbolLc)
+
+        const seen = new Set<string>()
+        const alleles: AlleleInfo[] = []
+        for (const r of results) {
+            const hgvs = r?.['name']
+            if (!hgvs || typeof hgvs !== 'string' || seen.has(hgvs)) continue
+            if (!matchesGene(r)) continue
+            seen.add(hgvs)
+            const variants = new Map<string, VariantInfo>()
+            variants.set(hgvs, { id: hgvs, displayName: hgvs, consequences: [] })
+            alleles.push({
+                id: hgvs, displayName: hgvs, variants,
+                hasDisease: false, hasPhenotype: false, source: 'search',
+            })
+            if (alleles.length >= limit) break
+        }
+        return alleles
+    } catch (error) {
+        console.error(`Error searching variants for gene ${geneId} (q="${query}"):`, error)
+        return []
+    }
+}
