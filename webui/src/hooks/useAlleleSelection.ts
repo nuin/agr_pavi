@@ -27,6 +27,7 @@ export interface UseAlleleSelectionResult {
     setAlleleListOpened: (_opened: boolean) => void;
     loadAllelesOnDemand: () => Promise<void>;
     resetSelection: () => void;
+    addAlleles: (_newAlleles: AlleleInfo[]) => void;
 }
 
 export function useAlleleSelection(
@@ -76,6 +77,18 @@ export function useAlleleSelection(
         }
     }, [gene, alleleList.length, alleleListLoading, initialAlleleIds]);
 
+    // Merge newly found alleles (e.g. from HGVS search) into alleleList,
+    // deduping by id. Used to add alleles found past the fetch cap without
+    // discarding the alleles already loaded or the user's in-progress selection.
+    const addAlleles = useCallback((newAlleles: AlleleInfo[]) => {
+        if (!newAlleles || newAlleles.length === 0) return;
+        setAlleleList((prev) => {
+            const existing = new Set(prev.map((a) => a.id));
+            const additions = newAlleles.filter((a) => !existing.has(a.id));
+            return additions.length === 0 ? prev : [...prev, ...additions];
+        });
+    }, []);
+
     const processAlleleEntry = useCallback(
         async (alleleIds: string[]) => {
             if (alleleList.length > 0) {
@@ -108,10 +121,13 @@ export function useAlleleSelection(
     // Update alleleList loading status once alleleList object has been saved
     useEffect(() => {
         console.log(`New allele list loaded.`);
-        if (selectedAlleleIds.length > 0) {
-            console.log('Clearing prior selected allele ids.');
-            setSelectedAlleleIds([]);
-        }
+        // Drop only selections no longer present in the list. A fresh gene
+        // load (new list shares no ids) clears everything as before; an
+        // append (addAlleles) preserves the in-progress selection.
+        setSelectedAlleleIds((prev) => {
+            const kept = prev.filter((id) => alleleList.some((a) => a.id === id));
+            return kept.length === prev.length ? prev : kept;
+        });
         setAlleleListLoading(false);
         if (alleleList.length > 0) {
             const select_menu = alleleMultiselectRef.current;
@@ -183,5 +199,6 @@ export function useAlleleSelection(
         setAlleleListOpened,
         loadAllelesOnDemand,
         resetSelection,
+        addAlleles,
     };
 }
