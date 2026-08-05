@@ -44,16 +44,20 @@ jest.mock('generic-sequence-panel', () => ({
 // to be prefixed with "mock" (case-insensitive).
 const mockLookupVariantByHgvs = jest.fn();
 const mockSearchVariants = jest.fn();
+const mockFetchAlleles = jest.fn();
 jest.mock('../serverActions', () => ({
     ...jest.requireActual('../__mocks__/serverActions'),
     lookupVariantByHgvs: (...a: any[]) => mockLookupVariantByHgvs(...a),
     searchVariants: (...a: any[]) => mockSearchVariants(...a),
+    fetchAlleles: (...a: any[]) => mockFetchAlleles(...a),
 }));
 
 describe('AlignmentEntry variant search', () => {
     beforeEach(() => {
         mockLookupVariantByHgvs.mockReset();
         mockSearchVariants.mockReset();
+        mockFetchAlleles.mockReset();
+        mockFetchAlleles.mockResolvedValue([]);
     });
 
     it('resolves a pasted HGVS via lookupVariantByHgvs and adds it as an option', async () => {
@@ -113,5 +117,179 @@ describe('AlignmentEntry variant search', () => {
         }, { timeout: 3000 });
 
         expect(mockSearchVariants).not.toHaveBeenCalled();
+    });
+
+    // Regression coverage for the fix-wave-1 bug: a just-added lookup/search
+    // allele could be invisible in the dropdown even though the status text
+    // said it was added.
+    it('keeps a just-added HGVS lookup allele selectable when a consequence filter is active (Fix A)', async () => {
+        // One pre-existing gene-sourced allele whose only consequence is
+        // HIGH impact, so the "High impact" preset filter is real (matches
+        // it) and active -- exercising the same `alleleFilters.filteredAlleles`
+        // layer the transcript filter also feeds into (both are members of
+        // `AlleleFilters`, threaded through the same `alleleMatches` check).
+        mockFetchAlleles.mockResolvedValue([
+            {
+                id: 'ALLELE:EXISTING',
+                displayName: 'existing-allele',
+                hasDisease: false,
+                hasPhenotype: false,
+                source: 'gene',
+                variants: new Map([
+                    ['VAR:EXISTING', {
+                        id: 'VAR:EXISTING',
+                        displayName: 'c.1A>G',
+                        consequences: [{
+                            transcriptId: 'CURIE:TX1',
+                            transcriptName: 'NM_000001.1',
+                            molecularConsequences: ['missense_variant'],
+                            impact: 'HIGH',
+                        }],
+                    }],
+                ]),
+            },
+        ]);
+
+        // The added lookup allele's consequence carries a MODERATE impact
+        // (and a transcript NAME, not a curie) so it fails the active HIGH
+        // impact filter -- reproducing the bug -- while still being a
+        // realistic lookup result.
+        mockLookupVariantByHgvs.mockResolvedValue({
+            id: 'MGI:1856155',
+            displayName: 'Pax6Sey',
+            variants: new Map([
+                ['NC_000068.8:g.105521966G>T', {
+                    id: 'NC_000068.8:g.105521966G>T',
+                    displayName: 'NC_000068.8:g.105521966G>T',
+                    consequences: [{
+                        transcriptId: 'NM_001244200.2',
+                        transcriptName: 'NM_001244200.2',
+                        molecularConsequences: ['missense_variant'],
+                        impact: 'MODERATE',
+                    }],
+                }],
+            ]),
+            hasDisease: false,
+            hasPhenotype: false,
+            source: 'lookup',
+        });
+
+        const result = render(
+            <AlignmentEntry
+                index={0}
+                agrjBrowseDataRelease='0.0.0'
+                dispatchInputPayloadPart={jest.fn()}
+                initialGeneId="MOCK:GENE1"
+                initialAlleleIds={['ALLELE:EXISTING']}
+            />
+        );
+
+        await waitFor(() => {
+            const alleleInputElement = result.container.querySelector('#alleles-0');
+            expect(alleleInputElement).not.toHaveClass('p-disabled');
+        }, { timeout: 5000 });
+
+        // Wait for the pre-existing allele to load so the filter panel has
+        // data to filter on.
+        const filterButton = await screen.findByRole('button', { name: 'Filter alleles' });
+        await waitFor(() => expect(filterButton).not.toBeDisabled(), { timeout: 5000 });
+
+        // Open the filter dialog and activate the "High impact" preset.
+        fireEvent.click(filterButton);
+        const highImpactButton = await screen.findByRole('button', { name: 'High impact' });
+        await waitFor(() => expect(highImpactButton).not.toBeDisabled(), { timeout: 5000 });
+        fireEvent.click(highImpactButton);
+
+        // Open the allele dropdown and paste the HGVS to resolve+add it.
+        fireEvent.focus(result.container.querySelector('div#alleles-0')!);
+        const allelesDropdownTrigger = result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger');
+        expect(allelesDropdownTrigger).not.toBeNull();
+        fireEvent.click(allelesDropdownTrigger!);
+
+        await waitFor(() => {
+            expect(document.querySelector('div.p-multiselect-panel')).not.toBeNull();
+        });
+
+        const filterInput = document.querySelector('input.p-multiselect-filter') as HTMLInputElement | null;
+        expect(filterInput).not.toBeNull();
+        fireEvent.change(filterInput!, { target: { value: 'NC_000068.8:g.105521966G>T' } });
+
+        await waitFor(() => {
+            expect(mockLookupVariantByHgvs).toHaveBeenCalledWith('MOCK:GENE1', 'NC_000068.8:g.105521966G>T');
+        }, { timeout: 3000 });
+
+        // Without Fix A, the active HIGH-impact filter would drop this
+        // allele from alleleOptions since its only consequence is MODERATE.
+        await waitFor(() => {
+            expect(screen.getByText('Pax6Sey')).toBeInTheDocument();
+        }, { timeout: 3000 });
+    });
+
+    it('routes non-HGVS input to a text search and clears the filter once results are added (Fix B)', async () => {
+        mockSearchVariants.mockResolvedValue([
+            {
+                id: 'NC_000007.14:g.112265902A>G',
+                displayName: 'NC_000007.14:g.112265902A>G',
+                variants: new Map([
+                    ['NC_000007.14:g.112265902A>G', {
+                        id: 'NC_000007.14:g.112265902A>G',
+                        displayName: 'NC_000007.14:g.112265902A>G',
+                        consequences: [],
+                    }],
+                ]),
+                hasDisease: false,
+                hasPhenotype: false,
+                source: 'search',
+            },
+        ]);
+
+        const result = render(
+            <AlignmentEntry
+                index={0}
+                agrjBrowseDataRelease='0.0.0'
+                dispatchInputPayloadPart={jest.fn()}
+                initialGeneId="MOCK:GENE1"
+            />
+        );
+
+        await waitFor(() => {
+            const alleleInputElement = result.container.querySelector('#alleles-0');
+            expect(alleleInputElement).not.toHaveClass('p-disabled');
+        }, { timeout: 5000 });
+
+        fireEvent.focus(result.container.querySelector('div#alleles-0')!);
+        const allelesDropdownTrigger = result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger');
+        expect(allelesDropdownTrigger).not.toBeNull();
+        fireEvent.click(allelesDropdownTrigger!);
+
+        await waitFor(() => {
+            expect(document.querySelector('div.p-multiselect-panel')).not.toBeNull();
+        });
+
+        // "Sey" is a non-HGVS free-text token; it must be routed to
+        // searchVariants, not lookupVariantByHgvs.
+        const filterInput = document.querySelector('input.p-multiselect-filter') as HTMLInputElement | null;
+        expect(filterInput).not.toBeNull();
+        fireEvent.change(filterInput!, { target: { value: 'Sey' } });
+
+        await waitFor(() => {
+            expect(mockSearchVariants).toHaveBeenCalled();
+        }, { timeout: 3000 });
+        expect(mockSearchVariants.mock.calls[0]?.[0]).toBe('MOCK:GENE1');
+        expect(mockSearchVariants.mock.calls[0]?.[3]).toBe('Sey');
+        expect(mockLookupVariantByHgvs).not.toHaveBeenCalled();
+
+        // The added result is HGVS-labeled and doesn't contain "Sey"; it's
+        // only visible once the typed filter text is cleared (Fix B). Its
+        // HGVS string renders twice in the item template (allele display
+        // name + variant label), so assert at least one match rather than
+        // a single unique node.
+        await waitFor(() => {
+            expect(screen.getAllByText('NC_000007.14:g.112265902A>G').length).toBeGreaterThan(0);
+        }, { timeout: 3000 });
+
+        await waitFor(() => {
+            expect(filterInput!.value).toBe('');
+        }, { timeout: 3000 });
     });
 });

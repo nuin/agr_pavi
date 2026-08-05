@@ -3,6 +3,10 @@
 import { GeneInfo, AlleleInfo, GeneSuggestion, VariantConsequence, VariantInfo } from "./types";
 import { fetchUntilDistinct } from "@/app/helper_fns";
 
+// Alliance API symbol/displayName fields may carry HTML markup (e.g. <sup>
+// for superscript allele suffixes); strip it for plain-text display.
+const stripHtml = (s?: string): string => (s ?? '').replace(/<[^>]+>/g, '')
+
 // Adapt the new Alliance gene-summary response shape (everything nested
 // under `.gene`, taxon/species split) to the flat GeneInfo shape that
 // the rest of the WebUI was written against. Keeps downstream
@@ -256,8 +260,6 @@ export async function fetchAlleles (geneId: string, requiredAlleleIds: string[] 
 
         const allelesMap = new Map<string, AlleleInfo>()
 
-        const stripHtml = (s?: string) => (s ?? '').replace(/<[^>]+>/g, '')
-
         const parseConsequence = (raw: any): VariantConsequence | undefined => {
             if (!raw) return undefined
             // Old shape had `raw.transcript.{id,name}`; new shape has `raw.variantTranscript.{curie,name}`.
@@ -390,7 +392,6 @@ function parsePredictedConsequence(raw: any): VariantConsequence {
 }
 
 export async function lookupVariantByHgvs(geneId: string, hgvs: string): Promise<AlleleInfo | null> {
-    const stripHtml = (s?: string) => (s ?? '').replace(/<[^>]+>/g, '')
     try {
         const url = `https://www.alliancegenome.org/api/variant/${encodeURIComponent(hgvs)}`
         const response = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } })

@@ -91,6 +91,14 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
     const [variantSearchStatus, setVariantSearchStatus] = useState<string | null>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const searchReqIdRef = useRef(0);
+    // Captures the Alleles MultiSelect's internal filter-reset callback (see
+    // the `filterTemplate` wiring below) so a successful text-search add can
+    // clear the typed filter text programmatically. The installed PrimeReact
+    // version (10.9.7) exposes neither a controlled `filterValue` prop nor a
+    // `resetFilter()` method on the component ref; the only supported hook
+    // into the internal reset is the `filterOptions.reset` callback handed
+    // to a custom `filterTemplate` render.
+    const alleleFilterResetRef = useRef<(() => void) | undefined>(undefined);
 
     // Refs for form elements
     const geneMessageRef: React.RefObject<Message | null> = createRef();
@@ -180,14 +188,25 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                 } else {
                     const hits = await searchVariants(gene.id, gene.symbol, gene.species?.name ?? '', value);
                     if (reqId !== searchReqIdRef.current) return;
-                    if (hits.length) { alleleSelection.addAlleles(hits); setVariantSearchStatus(`${hits.length} match(es) added`); }
+                    if (hits.length) {
+                        alleleSelection.addAlleles(hits);
+                        // Clear the typed filter text so the freshly-added
+                        // HGVS-labeled results (which won't match whatever
+                        // free-text query found them) become visible. This
+                        // re-enters handleAlleleFilter('') synchronously
+                        // (via the MultiSelect's onFilter prop), which resets
+                        // variantSearchStatus to null — so set our status
+                        // message afterwards to make it the one that sticks.
+                        alleleFilterResetRef.current?.();
+                        setVariantSearchStatus(`${hits.length} match(es) added`);
+                    }
                     else setVariantSearchStatus('No matches');
                 }
             } catch {
                 if (reqId === searchReqIdRef.current) setVariantSearchStatus('Search unavailable');
             }
         }, 350);
-    }, [geneSearch.gene, alleleSelection]);
+    }, [geneSearch.gene, alleleSelection.addAlleles]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Clear any pending debounced search on unmount.
     useEffect(() => () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); }, []);
@@ -228,11 +247,27 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
     // auto-picked transcript would otherwise show as "null".
     const alleleOptions = useMemo(() => {
         const shown = alleleFilters.filteredAlleles;
-        const shownIds = new Set(shown.map((r) => r.id));
+        const includedIds = new Set(shown.map((r) => r.id));
+
         const selectedButHidden = alleleSelection.alleleList.filter(
-            (r) => alleleSelection.selectedAlleleIds.includes(r.id) && !shownIds.has(r.id)
+            (r) => alleleSelection.selectedAlleleIds.includes(r.id) && !includedIds.has(r.id)
         );
-        return [...shown, ...selectedButHidden].map((r) => ({
+        selectedButHidden.forEach((r) => includedIds.add(r.id));
+
+        // A just-added lookup/search allele may not have a consequence
+        // matching the active transcript/consequence filters (lookup
+        // consequences carry a transcript NAME, not the curie the filter
+        // compares against; search alleles carry no consequences at all),
+        // and it isn't selected yet either, so neither `shown` nor
+        // `selectedButHidden` would include it. Exempt any user-added
+        // (non-'gene'-sourced) allele from those filters so it's always
+        // reachable right after being added.
+        const userAddedButHidden = alleleSelection.alleleList.filter(
+            (r) => r.source && r.source !== 'gene' && !includedIds.has(r.id)
+        );
+        userAddedButHidden.forEach((r) => includedIds.add(r.id));
+
+        return [...shown, ...selectedButHidden, ...userAddedButHidden].map((r) => ({
             key: r.id,
             chipLabel: r.displayName,
             filterValue: alleleOptionFilterValue(r),
@@ -514,6 +549,19 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                         style={{ width: '100%' }}
                         filter
                         filterBy="filterValue"
+                        filterTemplate={(options) => {
+                            // Not a visual override: `options.element` is the
+                            // library's own default filter input, returned
+                            // unchanged. This purely taps `filterOptions.reset`
+                            // (the only way this PrimeReact version exposes a
+                            // programmatic filter-clear) so it can be invoked
+                            // later from handleAlleleFilter.
+                            alleleFilterResetRef.current = options.filterOptions?.reset;
+                            // PrimeReact's type declarations mistakenly type
+                            // `element` as HTMLDivElement; at runtime it's the
+                            // already-built JSX for the default filter input.
+                            return options.element as unknown as React.ReactNode;
+                        }}
                         onFilter={(e) => handleAlleleFilter(e.filter)}
                         emptyMessage={!geneSearch.gene ? "Select a gene first" : (alleleSelection.alleleListLoading || alleleSelection.alleleList.length === 0 && !alleleSelection.alleleListLoaded) ? "Loading alleles..." : alleleFilters.activeCount > 0 ? "No alleles match filters" : "No alleles with variants found"}
                         value={alleleSelection.selectedAlleleIds}
