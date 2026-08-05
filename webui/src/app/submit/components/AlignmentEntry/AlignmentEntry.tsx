@@ -14,7 +14,7 @@ import { AlleleFilterPanel } from './AlleleFilterPanel';
 import { JobSumbissionPayloadRecord, InputPayloadPart, InputPayloadDispatchAction } from '../JobSubmitForm/types';
 import { TranscriptViewerDialog } from '../TranscriptViewer';
 import { lookupVariantByHgvs, searchVariants } from './serverActions';
-import { looksLikeHgvs, normalizeHgvs } from './hgvs';
+import { looksLikeHgvs, looksLikeGenomicPosition, normalizeHgvs } from './hgvs';
 
 // Note: dynamic import of stage vs main src is currently not possible on client nor server (2024/07/25).
 import { getSingleGenomeLocation } from 'https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib/utils.js';
@@ -176,6 +176,13 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
         if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
         const value = normalizeHgvs(rawValue ?? '');
         if (!gene || value.length < 3) { setVariantSearchStatus(null); return; }
+        // A bare position number can't be resolved (no accession) and the
+        // search index doesn't match it — guide the user to the full HGVS
+        // instead of a doomed lookup/search that would just say "No matches".
+        if (!looksLikeHgvs(value) && looksLikeGenomicPosition(value)) {
+            setVariantSearchStatus('Enter the full HGVS (e.g. NC_000068.8:g.105521966G>T) to add a specific variant');
+            return;
+        }
         searchDebounceRef.current = setTimeout(async () => {
             const reqId = ++searchReqIdRef.current;
             setVariantSearchStatus('Searching…');

@@ -292,4 +292,42 @@ describe('AlignmentEntry variant search', () => {
             expect(filterInput!.value).toBe('');
         }, { timeout: 3000 });
     });
+
+    it('shows a full-HGVS hint for a bare position number and calls neither server action', async () => {
+        const result = render(
+            <AlignmentEntry
+                index={0}
+                agrjBrowseDataRelease='0.0.0'
+                dispatchInputPayloadPart={jest.fn()}
+                initialGeneId="MOCK:GENE1"
+            />
+        );
+
+        await waitFor(() => {
+            const alleleInputElement = result.container.querySelector('#alleles-0');
+            expect(alleleInputElement).not.toHaveClass('p-disabled');
+        }, { timeout: 5000 });
+
+        fireEvent.focus(result.container.querySelector('div#alleles-0')!);
+        const allelesDropdownTrigger = result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger');
+        expect(allelesDropdownTrigger).not.toBeNull();
+        fireEvent.click(allelesDropdownTrigger!);
+
+        await waitFor(() => {
+            expect(document.querySelector('div.p-multiselect-panel')).not.toBeNull();
+        });
+
+        // A bare position number (no accession) is the natural-but-doomed
+        // input; it must show guidance, not trigger a lookup or a search.
+        const filterInput = document.querySelector('input.p-multiselect-filter') as HTMLInputElement | null;
+        expect(filterInput).not.toBeNull();
+        fireEvent.change(filterInput!, { target: { value: '105521966' } });
+
+        await waitFor(() => {
+            expect(screen.getByText(/Enter the full HGVS/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
+
+        expect(mockLookupVariantByHgvs).not.toHaveBeenCalled();
+        expect(mockSearchVariants).not.toHaveBeenCalled();
+    });
 });
