@@ -291,6 +291,33 @@
     background-color: var(--agr-primary-700);
 }
 
+.ctaButtons {
+    display: inline-flex;
+    gap: var(--agr-spacing-md);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.ctaSecondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--agr-spacing-md) var(--agr-spacing-xl);
+    background-color: transparent;
+    color: var(--agr-primary-700);
+    font-size: var(--agr-font-size-base);
+    font-weight: 600;
+    border: 2px solid var(--agr-primary-600);
+    border-radius: var(--agr-radius-md);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.ctaSecondary:hover {
+    background-color: var(--agr-primary-600);
+    color: white;
+}
+
 /* Responsive */
 @media (max-width: 992px) {
     .featureGrid {

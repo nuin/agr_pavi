@@ -117,9 +117,14 @@ export default function HomePage() {
             <section className={styles.cta}>
                 <h2>Ready to Get Started?</h2>
                 <p>Submit your first alignment job in minutes.</p>
-                <Link href="/submit" className={styles.primaryButton}>
-                    Submit Job Now
-                </Link>
+                <div className={styles.ctaButtons}>
+                    <Link href="/submit" className={styles.primaryButton}>
+                        Submit Job Now
+                    </Link>
+                    <Link href="/help/guide" className={styles.ctaSecondary}>
+                        Read the User Guide
+                    </Link>
+                </div>
             </section>
         </div>
     );
