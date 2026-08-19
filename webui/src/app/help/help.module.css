@@ -22,6 +22,72 @@
     font-size: 1.1rem;
 }
 
+/* User Guide call-to-action */
+.guideCta {
+    display: flex;
+    align-items: center;
+    gap: var(--agr-spacing-lg, 1.5rem);
+    max-width: 600px;
+    margin: 0 auto var(--agr-spacing-xl, 2rem);
+    padding: var(--agr-spacing-lg, 1.5rem);
+    background-color: var(--agr-primary-700);
+    color: #fff;
+    border-radius: var(--agr-radius-lg);
+    border: 1px solid var(--agr-primary-800);
+    box-shadow: var(--agr-shadow-sm);
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.guideCta:hover {
+    color: #fff;
+    text-decoration: none;
+    box-shadow: var(--agr-shadow-md);
+    transform: translateY(-1px);
+}
+
+.guideCta:focus-visible {
+    outline: 2px solid var(--agr-accent-700);
+    outline-offset: 2px;
+}
+
+.guideCtaIcon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+    font-size: 1.25rem;
+}
+
+.guideCtaBody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.guideCtaTitle {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.guideCtaSubtitle {
+    font-size: 0.85rem;
+    color: var(--agr-primary-100);
+    line-height: 1.4;
+}
+
+.guideCtaArrow {
+    flex-shrink: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
 /* Search Styles */
 .searchContainer {
     position: relative;

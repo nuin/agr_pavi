@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import Link from 'next/link';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Button } from 'primereact/button';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -90,6 +91,19 @@ export default function HelpPage() {
                     Find answers, learn about features, and get started with PAVI
                 </p>
             </header>
+
+            <Link href="/help/guide" className={styles.guideCta}>
+                <span className={styles.guideCtaIcon} aria-hidden="true">
+                    <i className="pi pi-book" />
+                </span>
+                <span className={styles.guideCtaBody}>
+                    <span className={styles.guideCtaTitle}>Read the full User Guide</span>
+                    <span className={styles.guideCtaSubtitle}>
+                        A complete walkthrough of submitting jobs, adding variants, and reading results, with screenshots.
+                    </span>
+                </span>
+                <span className={styles.guideCtaArrow} aria-hidden="true">&rarr;</span>
+            </Link>
 
             <HelpSearch
                 articles={helpArticles}

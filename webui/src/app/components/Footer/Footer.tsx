@@ -32,6 +32,9 @@ export const Footer: React.FC = () => {
                                 <a href="/jobs">View My Jobs</a>
                             </li>
                             <li>
+                                <a href="/help/guide">User Guide</a>
+                            </li>
+                            <li>
                                 <a
                                     href="https://www.alliancegenome.org/help"
                                     target="_blank"
