@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
+import { withBasePath } from '../../../utils/basePath';
 import styles from './guide.module.css';
 
 export const metadata: Metadata = {
@@ -154,7 +155,7 @@ export default function GuidePage() {
 
                         <figure className={styles.fig}>
                             <Image
-                                src="/guide/01-submit.jpg"
+                                src={withBasePath('/guide/01-submit.jpg')}
                                 alt="The PAVI Submit Job page: a Create a New Alignment card explaining the three steps, a Load Example button, and one alignment entry with Gene, Transcripts, View transcripts, and Alleles controls."
                                 width={1080}
                                 height={708}
@@ -200,7 +201,7 @@ export default function GuidePage() {
 
                         <figure className={styles.fig}>
                             <Image
-                                src="/guide/02-transcripts.jpg"
+                                src={withBasePath('/guide/02-transcripts.jpg')}
                                 alt="The View transcripts dialog titled Transcripts — Pax6, showing an interactive diagram of many isoform models drawn along a genomic position axis."
                                 width={1080}
                                 height={708}
@@ -269,7 +270,7 @@ export default function GuidePage() {
 
                         <figure className={styles.fig}>
                             <Image
-                                src="/guide/03-variant.jpg"
+                                src={withBasePath('/guide/03-variant.jpg')}
                                 alt="The Alleles box with a full HGVS pasted into the filter; the status reads Added — select it below, and an option for Pax6Sey with its MGI ID and HGVS appears in the dropdown."
                                 width={1080}
                                 height={708}
@@ -495,7 +496,7 @@ export default function GuidePage() {
 
                         <figure className={styles.fig}>
                             <Image
-                                src="/guide/04-alignment.jpg"
+                                src={withBasePath('/guide/04-alignment.jpg')}
                                 alt="The interactive alignment viewer: a position ruler with variant markers across the top, sequence names down the left, and a colour-coded multiple sequence alignment grid of amino-acid residues."
                                 width={1080}
                                 height={189}
@@ -708,7 +709,7 @@ export default function GuidePage() {
                         </p>
                         <figure className={styles.fig}>
                             <Image
-                                src="/guide/05-jobs.jpg"
+                                src={withBasePath('/guide/05-jobs.jpg')}
                                 alt="The My Jobs page: summary cards for Total, Completed, In Progress and Failed, above a searchable table of jobs with status pills, gene badges, and per-row star, view, copy-link and delete actions."
                                 width={1080}
                                 height={708}

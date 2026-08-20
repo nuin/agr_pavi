@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Tag } from 'primereact/tag';
 import { Dropdown } from 'primereact/dropdown';
+import { withBasePath } from '@/utils/basePath';
 import styles from './AdminComponents.module.css';
 
 // Environment options for deployment status
@@ -107,7 +108,9 @@ export function HealthStatus() {
         const method = endpoint.method || 'GET';
 
         try {
-            const response = await fetch(endpoint.url, {
+            // endpoint.url is also used as display text elsewhere (unprefixed); only
+            // the actual fetch target needs the basePath applied.
+            const response = await fetch(withBasePath(endpoint.url), {
                 method,
                 headers: {
                     'Accept': 'application/json',
@@ -158,7 +161,7 @@ export function HealthStatus() {
                 ? `/api/proxy-deployment-status?url=${encodeURIComponent(`${baseUrl}/api/deployment-status`)}`
                 : '/api/deployment-status';
 
-            const response = await fetch(url, {
+            const response = await fetch(withBasePath(url), {
                 headers: {
                     'Accept': 'application/json',
                 },

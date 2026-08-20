@@ -7,6 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { withBasePath } from '@/utils/basePath';
 import styles from './AdminComponents.module.css';
 
 interface ApiEndpoint {
@@ -114,7 +115,9 @@ export function ApiTester() {
                 }
             }
 
-            const res = await fetch(customPath, options);
+            // customPath is a display/editable API path (e.g. "/api/health"); prefix
+            // it with basePath only at the fetch call site, not in the stored constants.
+            const res = await fetch(withBasePath(customPath), options);
             const endTime = performance.now();
 
             // Get headers

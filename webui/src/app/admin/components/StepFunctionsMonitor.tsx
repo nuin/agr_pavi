@@ -8,6 +8,7 @@ import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { withBasePath } from '@/utils/basePath';
 import styles from './AdminComponents.module.css';
 
 interface ExecutionInfo {
@@ -62,7 +63,7 @@ export function StepFunctionsMonitor() {
         setLookupError('');
 
         try {
-            const response = await fetch(`/api/pipeline-job/${lookupUuid}`);
+            const response = await fetch(withBasePath(`/api/pipeline-job/${lookupUuid}`));
 
             if (!response.ok) {
                 if (response.status === 404) {

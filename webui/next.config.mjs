@@ -4,6 +4,10 @@ const withBundleAnalyzer = bundleAnalyzer({
     enabled: process.env.ANALYZE === 'true',
 });
 
+// Serve the app under a URL prefix (e.g. '/pavi') when NEXT_PUBLIC_BASE_PATH is set.
+// Unset/empty (default) keeps the app at root, matching current behavior exactly.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     eslint: {
@@ -19,6 +23,7 @@ const nextConfig = {
             'https://raw.githubusercontent.com/alliance-genome/agr_ui/stage/'
         ]
     },
+    ...(basePath ? { basePath } : {}),
 };
 
 export default withBundleAnalyzer(nextConfig);

@@ -14,6 +14,7 @@ import { FailureDisplay } from '../FailureDisplay/FailureDisplay';
 import { ResultsSummary } from '../ResultsSummary';
 import { AlignmentSkeleton } from '../AlignmentSkeleton';
 import { dataCache, CACHE_CONFIGS } from '@/utils/dataCache';
+import { withBasePath } from '@/utils/basePath';
 import { deduplicateSequences } from '../../utils/deduplicateSequences';
 
 const InteractiveAlignment = dynamic(() => import('../InteractiveAlignment/InteractiveAlignment'), { ssr: false })
@@ -257,7 +258,7 @@ export const AlignmentResultView: FunctionComponent<AlignmentResultViewProps> = 
                                 tooltip="Download the per-job SQLite (input + alignment + seq-info)"
                                 tooltipOptions={{ position: 'top' }}
                                 onClick={() => {
-                                    window.location.href = `/api/pipeline-job/${props.uuidStr}/export`;
+                                    window.location.href = withBasePath(`/api/pipeline-job/${props.uuidStr}/export`);
                                 }}
                                 disabled={isLoading || !!loadError || !alignmentResult}
                             />

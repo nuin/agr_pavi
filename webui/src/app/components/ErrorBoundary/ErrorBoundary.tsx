@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode, useState } from 'react';
+import { withBasePath } from '@/utils/basePath';
 import styles from './ErrorBoundary.module.css';
 
 export interface ErrorInfo {
@@ -39,7 +40,7 @@ export function ErrorFallback({
     };
 
     const handleGoHome = () => {
-        window.location.href = '/';
+        window.location.href = withBasePath('/');
     };
 
     const handleRetry = () => {

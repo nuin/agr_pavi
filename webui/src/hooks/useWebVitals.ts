@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useRef, useState } from 'react';
+import { withBasePath } from '@/utils/basePath';
 
 // Web Vitals metric types
 export interface WebVitalMetric {
@@ -273,9 +274,9 @@ export function sendToAnalytics(metric: WebVitalMetric): void {
 
     // Use sendBeacon if available, fallback to fetch
     if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/analytics/vitals', body);
+        navigator.sendBeacon(withBasePath('/api/analytics/vitals'), body);
     } else {
-        fetch('/api/analytics/vitals', {
+        fetch(withBasePath('/api/analytics/vitals'), {
             method: 'POST',
             body,
             keepalive: true,

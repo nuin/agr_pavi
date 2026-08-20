@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
+import { withBasePath } from '@/utils/basePath';
 import styles from './Accessibility.module.css';
 
 interface Shortcut {
@@ -66,10 +67,10 @@ export function KeyboardShortcuts({ customShortcuts = [] }: KeyboardShortcutsPro
             if (lastKey === 'g' && now - lastKeyTime < 500) {
                 if (e.key === 'h') {
                     e.preventDefault();
-                    window.location.href = '/';
+                    window.location.href = withBasePath('/');
                 } else if (e.key === 's') {
                     e.preventDefault();
-                    window.location.href = '/submit';
+                    window.location.href = withBasePath('/submit');
                 }
                 setLastKey(null);
             } else if (e.key === 'g') {

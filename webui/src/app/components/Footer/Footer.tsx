@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import styles from './Footer.module.css';
 
 export const Footer: React.FC = () => {
@@ -26,13 +27,13 @@ export const Footer: React.FC = () => {
                         <h4 className={styles.sectionTitle}>Quick Links</h4>
                         <ul className={styles.linkList}>
                             <li>
-                                <a href="/submit">Submit New Job</a>
+                                <Link href="/submit">Submit New Job</Link>
                             </li>
                             <li>
-                                <a href="/jobs">View My Jobs</a>
+                                <Link href="/jobs">View My Jobs</Link>
                             </li>
                             <li>
-                                <a href="/help/guide">User Guide</a>
+                                <Link href="/help/guide">User Guide</Link>
                             </li>
                             <li>
                                 <a
@@ -53,9 +54,9 @@ export const Footer: React.FC = () => {
                                 </a>
                             </li>
                             <li>
-                                <a href="/accessibility">
+                                <Link href="/accessibility">
                                     Accessibility
-                                </a>
+                                </Link>
                             </li>
                         </ul>
                     </div>

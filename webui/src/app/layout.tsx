@@ -10,6 +10,7 @@ import { Header } from './components/Header/Header';
 import { Footer } from './components/Footer/Footer';
 import { SkipLinks, LiveRegionProvider, KeyboardShortcuts } from './components/Accessibility';
 import { LayoutWrapper } from './components/LayoutWrapper';
+import { withBasePath } from '@/utils/basePath';
 
 const lato = Lato({
     subsets: ["latin"],
@@ -33,8 +34,7 @@ export default function RootLayout({
         <body className={lato.className}>
             <PrimeReactProvider>
                 <LiveRegionProvider>
-                    {/* eslint-disable-next-line @next/next/no-css-tags */}
-                    <link id="theme-link" rel="stylesheet" href="/themes/mdc-light-indigo/theme.css" />
+                    <link id="theme-link" rel="stylesheet" href={withBasePath('/themes/mdc-light-indigo/theme.css')} />
                     <LayoutWrapper
                         header={<Header />}
                         footer={<Footer />}

@@ -7,6 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Timeline } from 'primereact/timeline';
 import { Tag } from 'primereact/tag';
+import { withBasePath } from '@/utils/basePath';
 import styles from './AdminComponents.module.css';
 
 interface TestScenario {
@@ -264,7 +265,7 @@ export function JobSubmissionTester() {
         updateStep(1, { status: 'running' });
 
         try {
-            const response = await fetch('/api/pipeline-job/', {
+            const response = await fetch(withBasePath('/api/pipeline-job/'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -299,7 +300,7 @@ export function JobSubmissionTester() {
             const step3Start = performance.now();
             updateStep(2, { status: 'running' });
 
-            const verifyResponse = await fetch(`/api/pipeline-job/${uuid}`);
+            const verifyResponse = await fetch(withBasePath(`/api/pipeline-job/${uuid}`));
             const verifyData = await verifyResponse.json();
 
             if (!verifyResponse.ok) {
@@ -329,7 +330,7 @@ export function JobSubmissionTester() {
             const poll = async () => {
                 pollCount++;
                 try {
-                    const statusResponse = await fetch(`/api/pipeline-job/${uuid}`);
+                    const statusResponse = await fetch(withBasePath(`/api/pipeline-job/${uuid}`));
                     const statusData = await statusResponse.json();
 
                     updateStep(3, {
@@ -356,7 +357,7 @@ export function JobSubmissionTester() {
                         updateStep(4, { status: 'running' });
 
                         try {
-                            const resultResponse = await fetch(`/api/pipeline-job/${uuid}/result/alignment`);
+                            const resultResponse = await fetch(withBasePath(`/api/pipeline-job/${uuid}/result/alignment`));
 
                             if (resultResponse.ok) {
                                 // Alignment result is plain text (Clustal format), not JSON

@@ -36,7 +36,9 @@ export function middleware(request: NextRequest) {
         if (MOCK_API) {
             // Extract path after /api/ and redirect to mock endpoint
             const apiPath = request_path.substring(local_api_path.length + 1);
-            const mockUrl = new URL(`/api/mock/${apiPath}${request.nextUrl.search}`, request.url);
+            // The mock route lives under the app's basePath (e.g. /pavi/api/mock/...),
+            // while request_path has already had the basePath stripped by Next.
+            const mockUrl = new URL(`${request.nextUrl.basePath}/api/mock/${apiPath}${request.nextUrl.search}`, request.url);
             return NextResponse.rewrite(mockUrl);
         }
         return NextResponse.rewrite(new URL(request_path, API_BASE))
