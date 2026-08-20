@@ -50,6 +50,7 @@ Start here for comprehensive, end-to-end documentation:
 | [Step Functions Deployment Runbook](step-functions-deployment-runbook.md) | Ops | AWS Step Functions deployment guide |
 | [AWS Deployment Infrastructure](aws-deployment-infrastructure.md) | Ops | AWS infrastructure overview |
 | [WebUI Deployment Debugging](webui-deployment-debugging-guide.md) | Ops | Troubleshooting WebUI deployments |
+| [Deploying Under a Base Path](base-path-deployment.md) | Dev/Ops | Serve the WebUI under a URL prefix (e.g. `alliancegenome.org/pavi`) |
 
 ### Development Guides
 

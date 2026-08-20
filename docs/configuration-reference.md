@@ -105,6 +105,7 @@ PAVI_API_BASE_URL=https://api.pavi.alliancegenome.org npm run build
 |----------|---------|-------------|
 | `NODE_ENV` | `"development"` | Node.js environment |
 | `ANALYZE` | `"false"` | Enable webpack bundle analyzer |
+| `NEXT_PUBLIC_BASE_PATH` | `""` (root) | Serve the app under a URL prefix, e.g. `/pavi`. **Baked in at build time.** Unset = served at root (unchanged). See [Deploying under a base path](base-path-deployment.md). |
 
 ### Deployment Status (Admin)
 
