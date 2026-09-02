@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, RefObject } from 'react';
 import { MultiSelect } from 'primereact/multiselect';
-import { GeneInfo, AlleleInfo } from '@/app/submit/components/AlignmentEntry/types';
+import { GeneInfo, AlleleInfo, AlleleSource } from '@/app/submit/components/AlignmentEntry/types';
 import { fetchAlleles } from '@/app/submit/components/AlignmentEntry/serverActions';
 
 export interface UseAlleleSelectionOptions {
@@ -83,9 +83,25 @@ export function useAlleleSelection(
     const addAlleles = useCallback((newAlleles: AlleleInfo[]) => {
         if (!newAlleles || newAlleles.length === 0) return;
         setAlleleList((prev) => {
-            const existing = new Set(prev.map((a) => a.id));
+            const existing = new Map(prev.map((a) => [a.id, a]));
             const additions = newAlleles.filter((a) => !existing.has(a.id));
-            return additions.length === 0 ? prev : [...prev, ...additions];
+            // An allele the user explicitly searched for (source 'lookup' or
+            // 'search') must override the transcript/consequence auto-filter.
+            // If it's already loaded as a gene allele, promote its source so
+            // alleleOptions exempts it from the filter (the source!=='gene'
+            // branch there) — otherwise a name/HGVS search reports "added"
+            // while the filter keeps it hidden.
+            const promote = new Map<string, AlleleSource>();
+            for (const a of newAlleles) {
+                if (a.source && a.source !== 'gene' && existing.get(a.id)?.source === 'gene') {
+                    promote.set(a.id, a.source);
+                }
+            }
+            if (additions.length === 0 && promote.size === 0) return prev;
+            const updated = promote.size === 0
+                ? prev
+                : prev.map((a) => (promote.has(a.id) ? { ...a, source: promote.get(a.id) } : a));
+            return additions.length === 0 ? updated : [...updated, ...additions];
         });
     }, []);
 
