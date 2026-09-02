@@ -474,3 +474,65 @@ export async function searchVariants(
         return []
     }
 }
+
+// Best-effort lookup of an allele by its NAME (e.g. C. elegans "n1046"),
+// scoped to the current gene. The Alliance allele_search_result index carries
+// the allele symbol AND its genomic HGVS strings directly (`variants: [...]`),
+// so a name query resolves straight to a pipeline-ready HGVS — no chaining.
+// This is the path that lets a user type "n1046" and have the variant appear;
+// the variant_search_result index used by searchVariants does not match
+// allele names.
+export async function searchAllelesByName(
+    geneId: string, geneSymbol: string, speciesName: string, query: string, limit = 15
+): Promise<AlleleInfo[]> {
+    try {
+        const params = new URLSearchParams({
+            category: 'allele_search_result',
+            q: query,
+            limit: String(Math.max(1, limit) * 3), // over-fetch; filter by gene then trim
+        })
+        if (speciesName) params.append('species', speciesName)
+        const url = `https://www.alliancegenome.org/api/search?${params.toString()}`
+        const response = await fetch(url, { method: 'GET', headers: { accept: 'application/json' } })
+        if (!response.ok) return []
+        const body = await response.json()
+        const results: any[] = Array.isArray(body?.['results']) ? body['results'] : []
+
+        const symbolLc = geneSymbol.toLowerCase()
+        const speciesLc = speciesName.toLowerCase()
+        const matchesGene = (r: any): boolean =>
+            (!speciesName || r?.['species']?.toLowerCase?.() === speciesLc) &&
+            Array.isArray(r?.['genes']) &&
+            r['genes'].some((g: string) => typeof g === 'string' &&
+                g.toLowerCase().split(' ')[0] === symbolLc)
+
+        // Only genomic HGVS (e.g. NC_...:g.123A>T) is usable by the pipeline.
+        const isGenomicHgvs = (v: unknown): v is string =>
+            typeof v === 'string' && /:g\.\d/.test(v)
+
+        const seen = new Set<string>()
+        const alleles: AlleleInfo[] = []
+        for (const r of results) {
+            if (!matchesGene(r)) continue
+            const hgvsList: string[] = (Array.isArray(r?.['variants']) ? r['variants'] : []).filter(isGenomicHgvs)
+            if (hgvsList.length === 0) continue
+            const alleleId: string = r?.['id'] ?? r?.['primaryKey'] ?? (stripHtml(r?.['symbol']) || hgvsList[0])
+            if (seen.has(alleleId)) continue
+            seen.add(alleleId)
+            const displayName = stripHtml(r?.['symbol'] ?? r?.['name']) || alleleId
+            const variants = new Map<string, VariantInfo>()
+            for (const hgvs of hgvsList) {
+                if (!variants.has(hgvs)) variants.set(hgvs, { id: hgvs, displayName: hgvs, consequences: [] })
+            }
+            alleles.push({
+                id: alleleId, displayName, variants,
+                hasDisease: false, hasPhenotype: false, source: 'search',
+            })
+            if (alleles.length >= limit) break
+        }
+        return alleles
+    } catch (error) {
+        console.error(`Error searching alleles by name for gene ${geneId} (q="${query}"):`, error)
+        return []
+    }
+}

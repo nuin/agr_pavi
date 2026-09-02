@@ -118,6 +118,20 @@ export async function fetchAlleles (geneId: string): Promise<AlleleInfo[]> {
     return Promise.resolve(mockAlleles.get(geneId) || [])
 }
 
+// Variant/allele search actions default to no-ops in the manual mock; tests
+// that exercise them override these in their jest.mock factory.
+export async function searchVariants (): Promise<AlleleInfo[]> {
+    return Promise.resolve([])
+}
+
+export async function searchAllelesByName (): Promise<AlleleInfo[]> {
+    return Promise.resolve([])
+}
+
+export async function lookupVariantByHgvs (): Promise<AlleleInfo|null> {
+    return Promise.resolve(null)
+}
+
 export async function fetchGeneSuggestionsAutocomplete (geneQuery: string): Promise<GeneSuggestion[]> {
     console.log('Mocking fetchGeneSuggestionsAutocomplete for geneQuery:', geneQuery)
 

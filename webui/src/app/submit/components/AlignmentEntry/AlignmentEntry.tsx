@@ -13,7 +13,7 @@ import { useAlleleFilters } from './useAlleleFilters';
 import { AlleleFilterPanel } from './AlleleFilterPanel';
 import { JobSumbissionPayloadRecord, InputPayloadPart, InputPayloadDispatchAction } from '../JobSubmitForm/types';
 import { TranscriptViewerDialog } from '../TranscriptViewer';
-import { lookupVariantByHgvs, searchVariants } from './serverActions';
+import { lookupVariantByHgvs, searchVariants, searchAllelesByName } from './serverActions';
 import { looksLikeHgvs, looksLikeGenomicPosition, normalizeHgvs } from './hgvs';
 
 // Note: dynamic import of stage vs main src is currently not possible on client nor server (2024/07/25).
@@ -193,18 +193,39 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                     if (found) { alleleSelection.addAlleles([found]); setVariantSearchStatus('Added — select it below'); }
                     else setVariantSearchStatus('No match for this gene');
                 } else {
-                    const hits = await searchVariants(gene.id, gene.symbol, gene.species?.name ?? '', value);
+                    const species = gene.species?.name ?? '';
+                    // Look up by allele NAME (e.g. "n1046") and by free-text
+                    // variant search in parallel; the allele-name index carries
+                    // the HGVS directly, so a name resolves to a real variant.
+                    const [alleleHits, variantHits] = await Promise.all([
+                        searchAllelesByName(gene.id, gene.symbol, species, value),
+                        searchVariants(gene.id, gene.symbol, species, value),
+                    ]);
                     if (reqId !== searchReqIdRef.current) return;
+                    // Prefer named-allele hits (nicer labels); drop a bare-HGVS
+                    // variant hit whose HGVS a named allele already covers.
+                    const covered = new Set<string>();
+                    alleleHits.forEach((a) => getVariantKeys(a.variants).forEach((k) => covered.add(k)));
+                    const hits = [
+                        ...alleleHits,
+                        ...variantHits.filter((v) => !getVariantKeys(v.variants).some((k) => covered.has(k))),
+                    ];
                     if (hits.length) {
                         alleleSelection.addAlleles(hits);
-                        // Clear the typed filter text so the freshly-added
-                        // HGVS-labeled results (which won't match whatever
-                        // free-text query found them) become visible. This
-                        // re-enters handleAlleleFilter('') synchronously
-                        // (via the MultiSelect's onFilter prop), which resets
-                        // variantSearchStatus to null — so set our status
+                        // If the typed text still matches an added result
+                        // (e.g. an allele name like "n1046" — the added allele
+                        // is labeled n1046), KEEP the filter so it shows as the
+                        // single result. Otherwise clear it, since HGVS-labeled
+                        // variant-search hits won't match a free-text query and
+                        // would be hidden behind it. Clearing re-enters
+                        // handleAlleleFilter('') synchronously (via onFilter),
+                        // which resets the status to null — so set the status
                         // message afterwards to make it the one that sticks.
-                        alleleFilterResetRef.current?.();
+                        const q = value.toLowerCase();
+                        const stillMatches = hits.some((h) =>
+                            h.displayName?.toLowerCase().includes(q) ||
+                            getVariantKeys(h.variants).some((k) => k.toLowerCase().includes(q)));
+                        if (!stillMatches) alleleFilterResetRef.current?.();
                         setVariantSearchStatus(`${hits.length} match(es) added`);
                     }
                     else setVariantSearchStatus('No matches');

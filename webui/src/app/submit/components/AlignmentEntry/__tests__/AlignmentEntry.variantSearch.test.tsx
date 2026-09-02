@@ -44,11 +44,13 @@ jest.mock('generic-sequence-panel', () => ({
 // to be prefixed with "mock" (case-insensitive).
 const mockLookupVariantByHgvs = jest.fn();
 const mockSearchVariants = jest.fn();
+const mockSearchAllelesByName = jest.fn();
 const mockFetchAlleles = jest.fn();
 jest.mock('../serverActions', () => ({
     ...jest.requireActual('../__mocks__/serverActions'),
     lookupVariantByHgvs: (...a: any[]) => mockLookupVariantByHgvs(...a),
     searchVariants: (...a: any[]) => mockSearchVariants(...a),
+    searchAllelesByName: (...a: any[]) => mockSearchAllelesByName(...a),
     fetchAlleles: (...a: any[]) => mockFetchAlleles(...a),
 }));
 
@@ -56,6 +58,9 @@ describe('AlignmentEntry variant search', () => {
     beforeEach(() => {
         mockLookupVariantByHgvs.mockReset();
         mockSearchVariants.mockReset();
+        mockSearchVariants.mockResolvedValue([]);
+        mockSearchAllelesByName.mockReset();
+        mockSearchAllelesByName.mockResolvedValue([]);
         mockFetchAlleles.mockReset();
         mockFetchAlleles.mockResolvedValue([]);
     });
@@ -329,5 +334,63 @@ describe('AlignmentEntry variant search', () => {
 
         expect(mockLookupVariantByHgvs).not.toHaveBeenCalled();
         expect(mockSearchVariants).not.toHaveBeenCalled();
+    });
+
+    it('resolves an allele name (e.g. n1046) via searchAllelesByName and adds it', async () => {
+        // The allele-name index carries the HGVS directly, so typing a name
+        // yields a named, HGVS-keyed allele.
+        mockSearchAllelesByName.mockResolvedValue([
+            {
+                id: 'WB:WBVar00089919',
+                displayName: 'n1046',
+                variants: new Map([
+                    ['NC_003282.8:g.11691040C>T', {
+                        id: 'NC_003282.8:g.11691040C>T',
+                        displayName: 'NC_003282.8:g.11691040C>T',
+                        consequences: [],
+                    }],
+                ]),
+                hasDisease: false,
+                hasPhenotype: false,
+                source: 'search',
+            },
+        ]);
+
+        const result = render(
+            <AlignmentEntry
+                index={0}
+                agrjBrowseDataRelease='0.0.0'
+                dispatchInputPayloadPart={jest.fn()}
+                initialGeneId="MOCK:GENE1"
+            />
+        );
+
+        await waitFor(() => {
+            const alleleInputElement = result.container.querySelector('#alleles-0');
+            expect(alleleInputElement).not.toHaveClass('p-disabled');
+        }, { timeout: 5000 });
+
+        fireEvent.focus(result.container.querySelector('div#alleles-0')!);
+        const allelesDropdownTrigger = result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger');
+        fireEvent.click(allelesDropdownTrigger!);
+        await waitFor(() => {
+            expect(document.querySelector('div.p-multiselect-panel')).not.toBeNull();
+        });
+
+        const filterInput = document.querySelector('input.p-multiselect-filter') as HTMLInputElement | null;
+        expect(filterInput).not.toBeNull();
+        fireEvent.change(filterInput!, { target: { value: 'n1046' } });
+
+        // The name is routed to the allele-name search (not the HGVS lookup).
+        await waitFor(() => {
+            expect(mockSearchAllelesByName).toHaveBeenCalled();
+        }, { timeout: 3000 });
+        expect(mockSearchAllelesByName.mock.calls[0]?.[3]).toBe('n1046');
+        expect(mockLookupVariantByHgvs).not.toHaveBeenCalled();
+
+        // The resolved allele becomes visible (filter cleared after add).
+        await waitFor(() => {
+            expect(screen.getByText('n1046')).toBeInTheDocument();
+        }, { timeout: 3000 });
     });
 });
