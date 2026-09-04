@@ -239,6 +239,15 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
     // Clear any pending debounced search on unmount.
     useEffect(() => () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); }, []);
 
+    // Auto-dismiss the variant-search status so a terminal message
+    // ("Added — select it below", "N match(es) added", "No match…") doesn't
+    // linger in the UI. "Searching…" is left alone — it's replaced by its result.
+    useEffect(() => {
+        if (!variantSearchStatus || variantSearchStatus === 'Searching…') return;
+        const t = setTimeout(() => setVariantSearchStatus(null), 5000);
+        return () => clearTimeout(t);
+    }, [variantSearchStatus]);
+
     // Auto-filter alleles to those affecting the currently selected transcript(s).
     // Use curie (Alliance-API-aligned identifier) rather than JBrowse internal id.
     const selectedTranscriptCuries = useMemo(
