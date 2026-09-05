@@ -94,6 +94,7 @@ export interface ResultsSummaryProps {
     processingTime?: number; // in seconds
     onDownload?: () => void;
     onShare?: () => void;
+    onEdit?: () => void;
 }
 
 export function ResultsSummary({
@@ -105,6 +106,7 @@ export function ResultsSummary({
     processingTime,
     onDownload,
     onShare,
+    onEdit,
 }: ResultsSummaryProps) {
 
     const stats: AlignmentStats = useMemo(() => {
@@ -367,6 +369,15 @@ export function ResultsSummary({
                         </div>
                     </div>
                     <div className={styles.actions}>
+                        {onEdit && (
+                            <Button
+                                icon="pi pi-pencil"
+                                label="Edit these sequences"
+                                className="p-button-outlined p-button-sm"
+                                onClick={onEdit}
+                                tooltip="Reopen the Submit form pre-filled with these genes, transcripts and variants"
+                            />
+                        )}
                         {onDownload && (
                             <Button
                                 icon="pi pi-download"

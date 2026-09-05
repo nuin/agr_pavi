@@ -92,12 +92,17 @@ export function JobTable({ jobs, onRemove, onRemoveMultiple, onToggleStar, isLoa
         }
     };
 
-    const handleResubmit = (job: JobHistoryEntry) => {
-        // Store job data for resubmission and navigate to submit page
-        sessionStorage.setItem('pavi_resubmit', JSON.stringify({
-            genes: job.genes,
-        }));
-        router.push('/submit?resubmit=true');
+    const handleEditSequences = (job: JobHistoryEntry) => {
+        if (!job.inputGenes || job.inputGenes.length === 0) return;
+        // Stash the form selections that produced this job and reopen the
+        // Submit form pre-filled with them.
+        try {
+            sessionStorage.setItem('pavi_edit', JSON.stringify(job.inputGenes));
+        } catch (e) {
+            console.error('Failed to stash inputGenes for edit:', e);
+            return;
+        }
+        router.push('/submit?edit=true');
     };
 
     const confirmDelete = (job: JobHistoryEntry) => {
@@ -181,15 +186,14 @@ export function JobTable({ jobs, onRemove, onRemoveMultiple, onToggleStar, isLoa
                     tooltipOptions={{ position: 'top' }}
                 />
             )}
-            {job.status === 'failed' && (
-                <Button
-                    icon="pi pi-replay"
-                    className="p-button-text p-button-sm"
-                    onClick={() => handleResubmit(job)}
-                    tooltip="Resubmit"
-                    tooltipOptions={{ position: 'top' }}
-                />
-            )}
+            <Button
+                icon="pi pi-pencil"
+                className="p-button-text p-button-sm"
+                onClick={() => handleEditSequences(job)}
+                disabled={!job.inputGenes || job.inputGenes.length === 0}
+                tooltip="Edit these sequences"
+                tooltipOptions={{ position: 'top' }}
+            />
             <Button
                 icon="pi pi-trash"
                 className="p-button-text p-button-sm p-button-danger"

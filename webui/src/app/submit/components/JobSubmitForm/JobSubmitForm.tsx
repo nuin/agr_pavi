@@ -201,6 +201,23 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
     useEffect(() => {
         if (props.initialGenes && props.initialGenes.length > 0) {
             setLoadVersion(v => v + 1)
+            return
+        }
+
+        // Otherwise, check for a stashed "Edit these sequences" selection
+        // (set by the Result page / My Jobs, read once and discarded here).
+        try {
+            const stashed = sessionStorage.getItem('pavi_edit')
+            if (stashed) {
+                sessionStorage.removeItem('pavi_edit')
+                const parsed = JSON.parse(stashed) as ExampleGene[]
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setInitialGenes(parsed)
+                    setLoadVersion(v => v + 1)
+                }
+            }
+        } catch (e) {
+            console.error('Failed to read pavi_edit stash from sessionStorage:', e)
         }
         // Mount-only: the parent passes a fresh entry set per navigation.
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,6 +234,7 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
                     // Extract gene names and transcript count for job history
                     const genes: string[] = [];
                     let transcriptCount = 0;
+                    const inputGenes: ExampleGene[] = [];
                     inputPayloadParts.forEach((part) => {
                         if (part.payloadPart) {
                             part.payloadPart.forEach((record) => {
@@ -224,6 +242,15 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
                                     genes.push(record.base_seq_name);
                                 }
                                 transcriptCount++;
+                            });
+                        }
+                        if (part.formInput) {
+                            inputGenes.push({
+                                geneId: part.formInput.geneId,
+                                geneName: '',
+                                species: '',
+                                transcriptNames: part.formInput.transcriptNames,
+                                alleleIds: part.formInput.alleleIds,
                             });
                         }
                     });
@@ -235,6 +262,7 @@ export const JobSubmitForm: FunctionComponent<JobSumbitProps> = (props: JobSumbi
                         genes,
                         transcriptCount,
                         title: genes.length > 0 ? genes.join(', ') : undefined,
+                        inputGenes: inputGenes.length > 0 ? inputGenes : undefined,
                     });
 
                     const params = new URLSearchParams();

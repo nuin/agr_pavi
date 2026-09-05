@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+import type { ExampleGene } from '@/app/submit/components/ExampleDataLoader/ExampleDataLoader';
+
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface JobHistoryEntry {
@@ -15,6 +17,10 @@ export interface JobHistoryEntry {
     duration?: number; // in seconds
     error?: string;
     starred?: boolean;
+    /** Form selections (gene/transcripts/alleles per entry) captured at
+     * submit time, used to pre-fill the Submit form for "Edit these
+     * sequences". Absent for jobs imported via "Add by UUID". */
+    inputGenes?: ExampleGene[];
 }
 
 const STORAGE_KEY = 'pavi_job_history';

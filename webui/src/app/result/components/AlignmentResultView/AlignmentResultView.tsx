@@ -2,6 +2,7 @@
 
 import React, { FunctionComponent, useCallback, useEffect, useState } from 'react';
 
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
@@ -15,6 +16,7 @@ import { ResultsSummary } from '../ResultsSummary';
 import { AlignmentSkeleton } from '../AlignmentSkeleton';
 import { dataCache, CACHE_CONFIGS } from '@/utils/dataCache';
 import { withBasePath } from '@/utils/basePath';
+import { useJobHistory } from '@/hooks/useJobHistory';
 import { deduplicateSequences } from '../../utils/deduplicateSequences';
 
 const InteractiveAlignment = dynamic(() => import('../InteractiveAlignment/InteractiveAlignment'), { ssr: false })
@@ -24,6 +26,8 @@ export interface AlignmentResultViewProps {
     readonly uuidStr: string
 }
 export const AlignmentResultView: FunctionComponent<AlignmentResultViewProps> = (props: AlignmentResultViewProps) => {
+    const router = useRouter()
+    const { getJob } = useJobHistory()
 
     const [displayMode, setDisplayMode] = useState('virtualized' as displayModeType)
     type displayModeOptionsType = {
@@ -137,6 +141,20 @@ export const AlignmentResultView: FunctionComponent<AlignmentResultViewProps> = 
         })
     }
 
+    const job = getJob(props.uuidStr)
+    const canEditSequences = !!job?.inputGenes && job.inputGenes.length > 0
+
+    const handleEditSequences = () => {
+        if (!job?.inputGenes || job.inputGenes.length === 0) return
+        try {
+            sessionStorage.setItem('pavi_edit', JSON.stringify(job.inputGenes))
+        } catch (e) {
+            console.error('Failed to stash inputGenes for edit:', e)
+            return
+        }
+        router.push('/submit?edit=true')
+    }
+
     useEffect(
         () => {
             console.log(`Fetching alignmentResult.`)
@@ -227,6 +245,7 @@ export const AlignmentResultView: FunctionComponent<AlignmentResultViewProps> = 
                             completedAt={loadedAt}
                             onDownload={alignmentResult ? handleDownload : undefined}
                             onShare={handleShare}
+                            onEdit={canEditSequences ? handleEditSequences : undefined}
                         />
                     </details>
                 );

@@ -34,6 +34,14 @@ export interface InputPayloadPart {
     index: number,
     status: AlignmentEntryStatus,
     payloadPart: PayloadPart
+    /** The form selections that produced this payload part, captured so the
+     * job can later be re-opened in the Submit form pre-filled ("Edit these
+     * sequences"). Only set on the READY dispatch. */
+    formInput?: {
+        geneId: string,
+        transcriptNames: string[],
+        alleleIds: string[]
+    }
 }
 
 export type InputPayloadPartMap = Map<number, InputPayloadPart>

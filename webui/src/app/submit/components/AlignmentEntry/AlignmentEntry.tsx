@@ -412,6 +412,11 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                 updateInputPayloadPart({
                     status: AlignmentEntryStatus.READY,
                     payloadPart: portion,
+                    formInput: {
+                        geneId: geneSearch.gene.id,
+                        transcriptNames: transcriptSelection.selectedTranscriptsInfo.map((t) => t.name),
+                        alleleIds: [...alleleSelection.selectedAlleleIds],
+                    },
                 });
             }
         }
@@ -419,6 +424,7 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
         geneSearch.gene,
         transcriptSelection.selectedTranscriptsInfo,
         alleleSelection.selectedAllelesInfo,
+        alleleSelection.selectedAlleleIds,
         payloadPortion,
         updateInputPayloadPart,
     ]);
