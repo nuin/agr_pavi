@@ -283,20 +283,16 @@ describe('AlignmentEntry', () => {
         expect(allelesDropdownTrigger).not.toBeNull()
         fireEvent.click(allelesDropdownTrigger!)
 
-        // Wait for alleles to start loading
+        // Alleles lazy-load when the dropdown opens. The Alleles MultiSelect
+        // uses a custom loadingIcon (<i class="pi pi-spin pi-spinner">), not the
+        // default trigger SVG the transcripts field uses, and with fast mocks the
+        // transient loading state isn't reliably observable. Assert the actual
+        // outcome under test instead: the panel opens and its options populate.
         await waitFor(() => {
-            expect(result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger > svg.p-multiselect-trigger-icon.p-icon-spin')).not.toBeNull()
-        })
-
-        // Wait for alleles to finish loading
-        await waitFor(() => {
-            expect(result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger > svg.p-multiselect-trigger-icon:not(.p-icon-spin)')).not.toBeNull()
-        })
-
-        // Find opened allele selection pane (panel is rendered in portal, use document)
-        await waitFor(() => {
-            expect(document.querySelector('div.p-multiselect-panel')).not.toBeNull()
-        })
+            const panel = document.querySelector('div.p-multiselect-panel')
+            expect(panel).not.toBeNull()
+            expect(panel!.querySelectorAll('li.p-multiselect-item')).toHaveLength(2)
+        }, {timeout: 5000})
 
         // Find allele option element
         const allelesSelectionPaneElement = document.querySelector('div.p-multiselect-panel')
