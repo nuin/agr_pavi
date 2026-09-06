@@ -68,7 +68,29 @@ mockGenes.set('MOCK:GENE_SINGLE_ALLELE', {
     }]
 })
 
+// Gene with a single, very long allele name - exercises HGVS name truncation
+mockGenes.set('MOCK:GENE_LONG_ALLELE', {
+    id: 'MOCK:GENE_LONG_ALLELE',
+    symbol: 'GENELONGALLELE',
+    species: {
+        taxonId: 1,
+        shortName: 'Mocks'
+    },
+    genomeLocations: [{
+        chromosome: "7",
+        start: 7000,
+        end: 8000,
+        assembly: "GRCh38",
+        strand: "+"
+    }]
+})
+
 const mockAlleles = new Map<string, AlleleInfo[]>()
+
+// A pathologically long genomic HGVS (large delins) that must be truncated with
+// an ellipsis in the Alleles dropdown rather than blowing out the row.
+export const LONG_ALLELE_NAME =
+    'NC_000007.14:g.7668402_7668500delinsACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT'
 
 const mockVariant = (id: string, displayName: string) => ({ id, displayName, consequences: [] })
 
@@ -106,6 +128,12 @@ mockAlleles.set('MOCK:GENE_MANY_ALLELES', [
 mockAlleles.set('MOCK:GENE_SINGLE_ALLELE', [
     {id: 'ALLELE:SINGLE', displayName: 'single-allele', hasDisease: false, hasPhenotype: false,
      variants: new Map([['VAR:SINGLE', mockVariant('VAR:SINGLE', 'c.123A>G')]])}
+])
+
+// Long-allele case: one allele whose displayName is a very long HGVS string
+mockAlleles.set('MOCK:GENE_LONG_ALLELE', [
+    {id: 'ALLELE:LONG1', displayName: LONG_ALLELE_NAME, hasDisease: false, hasPhenotype: false,
+     variants: new Map([['VAR:LONG1', mockVariant('VAR:LONG1', LONG_ALLELE_NAME)]])}
 ])
 
 export async function fetchGeneInfo (geneId: string): Promise<GeneInfo|undefined> {

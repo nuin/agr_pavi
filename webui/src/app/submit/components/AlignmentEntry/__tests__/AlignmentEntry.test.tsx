@@ -4,6 +4,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react'
 
 import { Feature } from '../utils';
 import { AlignmentEntry } from '../AlignmentEntry'
+import { LONG_ALLELE_NAME } from '../__mocks__/serverActions'
 
 jest.mock('https://raw.githubusercontent.com/alliance-genome/agr_ui/main/src/lib/utils.js',
     () => {
@@ -468,5 +469,46 @@ describe('AlignmentEntry', () => {
         // Check that one of them shows a complex variant (3 variants)
         expect(options[4]).toHaveTextContent('complex-1')
         expect(options[4]).toHaveTextContent('3 variants')
+    })
+
+    it('truncates a long allele name with an ellipsis and keeps the full value in a tooltip', async () => {
+        const result = render(
+            <AlignmentEntry index={0} agrjBrowseDataRelease='0.0.0' dispatchInputPayloadPart={jest.fn()} />
+        )
+
+        // Select the gene whose single allele has a very long HGVS name
+        const geneInputElement = result.container.querySelector('#gene-0 > input')
+        fireEvent.focusIn(geneInputElement!)
+        fireEvent.input(geneInputElement!, {target: {value: 'MOCK:GENE_LONG_ALLELE'}})
+        fireEvent.focusOut(geneInputElement!)
+
+        await waitFor(() => {
+            expect(result.container.querySelector('#gene-0 > svg.p-autocomplete-loader')).toBeNull()
+        }, {timeout: 5000})
+
+        await waitFor(() => {
+            expect(result.container.querySelector('#alleles-0')).not.toHaveClass('p-disabled')
+        })
+
+        // Open the allele dropdown
+        const allelesDropdownTrigger = result.container.querySelector('div#alleles-0 > div.p-multiselect-trigger')
+        fireEvent.click(allelesDropdownTrigger!)
+
+        await waitFor(() => {
+            const options = document.querySelectorAll('div.p-multiselect-panel li.p-multiselect-item')
+            expect(options.length).toBe(1)
+        }, {timeout: 5000})
+
+        // The option's name span carries the full HGVS as a title (hover tooltip)
+        // and is styled to truncate with an ellipsis rather than blow out the row.
+        const nameSpan = Array.from(
+            document.querySelectorAll('div.p-multiselect-panel li.p-multiselect-item span[title]')
+        ).find((el) => el.getAttribute('title') === LONG_ALLELE_NAME) as HTMLElement | undefined
+
+        expect(nameSpan).toBeDefined()
+        expect(nameSpan!.textContent).toBe(LONG_ALLELE_NAME)
+        expect(nameSpan!.style.textOverflow).toBe('ellipsis')
+        expect(nameSpan!.style.whiteSpace).toBe('nowrap')
+        expect(nameSpan!.style.overflow).toBe('hidden')
     })
 })
