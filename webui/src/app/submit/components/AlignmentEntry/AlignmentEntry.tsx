@@ -455,18 +455,38 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
             ? getVariantValues(alleleInfo.variants)[0]?.displayName
             : `${variantCount} variants`;
 
+        // Genomic HGVS names can get very long (large indels / insertions);
+        // truncate them with an ellipsis so one allele can't blow out the row
+        // width, and expose the full value via the native title tooltip.
+        const ellipsis: React.CSSProperties = {
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+        };
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontWeight: 500 }}>{alleleInfo.displayName}</span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--agr-text-secondary, #6c757d)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, maxWidth: '100%' }}>
+                <span style={{ fontWeight: 500, display: 'block', maxWidth: 'min(60ch, 70vw)', ...ellipsis }} title={alleleInfo.displayName}>
+                    {alleleInfo.displayName}
+                </span>
+                <span style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--agr-text-secondary, #6c757d)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    minWidth: 0,
+                    maxWidth: 'min(60ch, 70vw)'
+                }}>
                     {alleleInfo.id !== alleleInfo.displayName && (
-                        <span style={{ marginRight: '0.5rem' }}>{alleleInfo.id}</span>
+                        <span style={ellipsis} title={alleleInfo.id}>{alleleInfo.id}</span>
                     )}
                     <span style={{
                         padding: '2px 6px',
                         backgroundColor: 'var(--agr-gray-100, #f1f3f5)',
                         borderRadius: '4px',
-                        fontSize: '0.75rem'
+                        fontSize: '0.75rem',
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap'
                     }}>
                         {variantLabel}
                     </span>
