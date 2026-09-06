@@ -36,6 +36,7 @@ export interface UseTranscriptSelectionResult {
     // State
     transcriptList: Feature[];
     transcriptListLoading: boolean;
+    transcriptLoadFailed: boolean;
     selectedTranscriptIds: string[];
     selectedTranscriptsInfo: TranscriptInfo[];
     transcriptListFocused: boolean;
@@ -82,6 +83,11 @@ export function useTranscriptSelection(
     // Transcript state
     const [transcriptList, setTranscriptList] = useState<Feature[]>([]);
     const [transcriptListLoading, setTranscriptListLoading] = useState(true);
+    // True when a transcript fetch errored (e.g. the JBrowse NCList track data
+    // doesn't exist for this species' assembly/release — see zebrafish on
+    // GRCz12tu, which only ships GFF, not NCList). Distinct from "loaded but
+    // empty" so the UI can explain the difference.
+    const [transcriptLoadFailed, setTranscriptLoadFailed] = useState(false);
     const [selectedTranscriptIds, setSelectedTranscriptIds] = useState<string[]>([]);
     const [selectedTranscriptsInfo, setSelectedTranscriptsInfo] = useState<TranscriptInfo[]>([]);
     const [transcriptListFocused, setTranscriptListFocused] = useState(false);
@@ -201,6 +207,9 @@ export function useTranscriptSelection(
             console.log(`Updating transcript list for gene object: ${gene}`);
 
             if (gene) {
+                setTranscriptLoadFailed(false);
+                setTranscriptListLoading(true);
+
                 const speciesConfig = getSpecies(gene.species.taxonId);
                 console.log('speciesConfig:', speciesConfig);
 
@@ -213,24 +222,36 @@ export function useTranscriptSelection(
 
                 const genomeLocation = getSingleGenomeLocation(gene.genomeLocations);
 
-                const transcripts = await fetchTranscripts({
-                    refseq: genomeLocation['chromosome'],
-                    start: genomeLocation['start'],
-                    end: genomeLocation['end'],
-                    gene: gene['symbol'],
-                    urltemplate: speciesConfig.jBrowseurltemplate,
-                    nclistbaseurl: jBrowsenclistbaseurl,
-                });
-                console.log('transcripts received:', transcripts);
+                try {
+                    const transcripts = await fetchTranscripts({
+                        refseq: genomeLocation['chromosome'],
+                        start: genomeLocation['start'],
+                        end: genomeLocation['end'],
+                        gene: gene['symbol'],
+                        urltemplate: speciesConfig.jBrowseurltemplate,
+                        nclistbaseurl: jBrowsenclistbaseurl,
+                    });
+                    console.log('transcripts received:', transcripts);
 
-                // Define transcripts list
-                setTranscriptList(transcripts);
+                    // Define transcripts list
+                    setTranscriptList(transcripts);
+                } catch (e) {
+                    // fetchTranscripts rejects when the NCList track data can't be
+                    // read (e.g. a 404 because this assembly/release has no NCList
+                    // tracks published). Surface it instead of leaving a silent
+                    // empty dropdown.
+                    console.error(`Failed to fetch transcripts for ${gene.symbol}:`, e);
+                    setTranscriptLoadFailed(true);
+                    setTranscriptList([]);
+                    setTranscriptListLoading(false);
+                }
             }
         }
 
         if (gene !== undefined) {
             updateTranscriptList();
         } else {
+            setTranscriptLoadFailed(false);
             setTranscriptList([]);
         }
     }, [gene, agrjBrowseDataRelease]);
@@ -285,6 +306,7 @@ export function useTranscriptSelection(
         // State
         transcriptList,
         transcriptListLoading,
+        transcriptLoadFailed,
         selectedTranscriptIds,
         selectedTranscriptsInfo,
         transcriptListFocused,

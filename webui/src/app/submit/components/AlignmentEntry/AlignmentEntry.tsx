@@ -495,6 +495,16 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
         );
     };
 
+    // A resolved gene with an empty transcript list means the JBrowse NCList
+    // track data isn't available for this species' assembly/release (e.g.
+    // zebrafish on GRCz12tu, which only ships GFF) — or the fetch errored.
+    // Either way there's nothing to select, so tell the user instead of
+    // leaving a silent empty dropdown.
+    const noTranscriptsAvailable =
+        !!geneSearch.gene &&
+        !transcriptSelection.transcriptListLoading &&
+        transcriptSelection.transcriptList.length === 0;
+
     return (
         <div className="p-inputgroup" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', width: '100%' }}>
             {/* 1. Gene Selection (required) */}
@@ -542,6 +552,13 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                     <MultiSelect
                         id={`transcripts-${props.index}`}
                         loading={transcriptSelection.transcriptListLoading}
+                        emptyMessage={
+                            !geneSearch.gene
+                                ? 'Select a gene first'
+                                : noTranscriptsAvailable
+                                    ? 'No transcript models available for this assembly'
+                                    : 'Select transcript(s)'
+                        }
                         ref={transcriptMultiselectRef}
                         display="comma"
                         filter
@@ -581,6 +598,20 @@ export const AlignmentEntry: FunctionComponent<AlignmentEntryProps> = (props: Al
                     />
                     <label htmlFor={`transcripts-${props.index}`}>Transcripts</label>
                 </FloatLabel>
+                {noTranscriptsAvailable && (
+                    <small
+                        role="alert"
+                        style={{
+                            display: 'block',
+                            marginTop: '0.35rem',
+                            color: 'var(--agr-danger, #b3261e)',
+                            lineHeight: 1.3,
+                        }}
+                    >
+                        No transcript models are available for this gene in the current genome
+                        assembly, so it can&rsquo;t be aligned yet.
+                    </small>
+                )}
             </div>
             <Button
                 label="View transcripts"
