@@ -188,13 +188,42 @@ export function useGeneSearch(
         processGeneEntry(selectedGeneSuggestion !== undefined ? selectedGeneSuggestion.id : undefined);
     }, [selectedGeneSuggestion, processGeneEntry]);
 
-    // Handle initialGeneId prop - auto-search and select when provided
+    // Handle initialGeneId prop - resolve and select the gene directly when
+    // provided (Load Example / Edit query / bulk upload). We already know the
+    // exact gene ID, so fetch its info and select it straight away instead of
+    // routing through searchGene + auto-select-when-single: an exact-ID search
+    // also pulls in fuzzy autocomplete hits (>1 suggestion), so the auto-select
+    // never fired and the gene — along with its transcripts and alleles —
+    // never loaded.
     useEffect(() => {
-        if (setupCompleted && initialGeneId && !selectedGeneSuggestion) {
-            console.log(`Processing initialGeneId: ${initialGeneId}`);
-            setGeneQuery(initialGeneId);
-            searchGene(initialGeneId);
+        if (!(setupCompleted && initialGeneId && !selectedGeneSuggestion)) {
+            return;
         }
+        let cancelled = false;
+        console.log(`Processing initialGeneId: ${initialGeneId}`);
+        setGeneQuery(initialGeneId);
+        (async () => {
+            const idMatch = await fetchGeneInfo(initialGeneId);
+            if (cancelled) {
+                return;
+            }
+            if (idMatch) {
+                const suggestion: GeneSuggestion = {
+                    id: idMatch.id,
+                    displayName: `${idMatch.symbol} (${idMatch.species.shortName})`,
+                };
+                // Selecting the suggestion drives the same processGeneEntry
+                // pipeline as a manual pick, which loads transcripts + alleles.
+                setSelectedGeneSuggestion(suggestion);
+                setGeneQuery(suggestion);
+            } else {
+                // Fall back to a text search if the ID didn't resolve directly.
+                searchGene(initialGeneId);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
     }, [setupCompleted, initialGeneId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
