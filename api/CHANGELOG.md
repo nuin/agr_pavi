@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.7.0](https://github.com/nuin/agr_pavi/compare/api-v0.6.3...api-v0.7.0) (2026-09-25)
+
+
+### Features
+
+* export a finished job as JSON, FASTA, or variants CSV ([f76231b](https://github.com/nuin/agr_pavi/commit/f76231be9b7b7abaf37ca072cfb0997696b0f5a7))
+* surface component versions (WebUI footer + API /health) ([8e3e291](https://github.com/nuin/agr_pavi/commit/8e3e2914a15a1468bf289ac34a5055fcf58c0b07))
+
+
+### Bug Fixes
+
+* **api:** patch orphaned security deps (anyio, urllib3, python-multipart) ([#982](https://github.com/nuin/agr_pavi/issues/982)) ([f377637](https://github.com/nuin/agr_pavi/commit/f3776377091a124fcc20398413e2e914cf8132fd))
+* **api:** upgrade fastapi to 0.133 so starlette can move to 1.x ([#993](https://github.com/nuin/agr_pavi/issues/993)) ([c7439d3](https://github.com/nuin/agr_pavi/commit/c7439d352246e59b64dc6a43ecc36519a5fc3bde))
+* **ci:** green the code-checks debt ([#927](https://github.com/nuin/agr_pavi/issues/927)) ([b73159b](https://github.com/nuin/agr_pavi/commit/b73159b7b2377dc5a151952ff1ebc9b6147131be))
+* **ci:** green the code-checks debt tracked in [#927](https://github.com/nuin/agr_pavi/issues/927) ([2394e35](https://github.com/nuin/agr_pavi/commit/2394e3594a6cdb5f719537960d068af62da345b0))
+* **ci:** ignore E203 (ruff slice conflict) + correct misplaced flake8 noqa ([2fc16f4](https://github.com/nuin/agr_pavi/commit/2fc16f4f01e60fc959fa21c7f22646e62dafcc73))
+* **ci:** repair lock-comment size limit, post-merge deploy and three check failures ([#995](https://github.com/nuin/agr_pavi/issues/995)) ([74e0fdd](https://github.com/nuin/agr_pavi/commit/74e0fdd1e823dd7c72c122f05b8cef6d0a22580f))
+* **deps:** bump urllib3 2.6.3 -&gt; 2.8.0 across remaining manifests ([#985](https://github.com/nuin/agr_pavi/issues/985)) ([f4e8d62](https://github.com/nuin/agr_pavi/commit/f4e8d62e7bfb86eaacd4b6829357217d355d6c0a))
+* **deps:** patch remaining fixable Dependabot alerts (round 2) ([#992](https://github.com/nuin/agr_pavi/issues/992)) ([441d557](https://github.com/nuin/agr_pavi/commit/441d5579fcfc542781ad6610b0613144cfe6353f))
+* **pipeline:** stop silently dropping sequences; make parallel retrieval safe ([#998](https://github.com/nuin/agr_pavi/issues/998)) ([7a7152d](https://github.com/nuin/agr_pavi/commit/7a7152ddd7b694f54f544747bea6fc0feb44bdbc))
+
 ## [0.6.3](https://github.com/alliance-genome/agr_pavi/compare/api-v0.6.2...api-v0.6.3) (2026-09-22)
 
 
